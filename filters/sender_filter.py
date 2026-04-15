@@ -29,10 +29,6 @@ class SenderFilter(BaseFilter):
             logger.info('消息不满足转发条件，跳过发送')
             return False
         
-        if rule.enable_only_push:
-            logger.info('只转发到推送配置，跳过发送')
-            return True
-            
         # 获取目标聊天信息
         target_chat = rule.target_chat
         target_chat_id = int(target_chat.telegram_chat_id)
@@ -182,16 +178,13 @@ class SenderFilter(BaseFilter):
             logger.error(f'发送媒体组消息时出错: {str(e)}')
             raise
         finally:
-            # 删除临时文件，但如果启用了推送则保留
-            if not rule.enable_push:
-                for file_path in files:
-                    try:
-                        os.remove(file_path)
-                        logger.info(f'删除临时文件: {file_path}')
-                    except Exception as e:
-                        logger.error(f'删除临时文件失败: {str(e)}')
-            else:
-                logger.info(f'推送功能已启用，保留临时文件')
+            # 删除临时文件
+            for file_path in files:
+                try:
+                    os.remove(file_path)
+                    logger.info(f'删除临时文件: {file_path}')
+                except Exception as e:
+                    logger.error(f'删除临时文件失败: {str(e)}')
     
     async def _send_single_media(self, context, target_chat_id, parse_mode):
         """发送单条媒体消息"""
@@ -255,15 +248,11 @@ class SenderFilter(BaseFilter):
                 logger.error(f'发送媒体消息时出错: {str(e)}')
                 raise
             finally:
-                # 删除临时文件，但如果启用了推送则保留
-                if not rule.enable_push:
-                    try:
-                        os.remove(file_path)
-                        logger.info(f'删除临时文件: {file_path}')
-                    except Exception as e:
-                        logger.error(f'删除临时文件失败: {str(e)}')
-                else:
-                    logger.info(f'推送功能已启用，保留临时文件: {file_path}')
+                try:
+                    os.remove(file_path)
+                    logger.info(f'删除临时文件: {file_path}')
+                except Exception as e:
+                    logger.error(f'删除临时文件失败: {str(e)}')
     
     async def _send_text_message(self, context, target_chat_id, parse_mode):
         """发送纯文本消息"""

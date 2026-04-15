@@ -7,13 +7,10 @@ from message_listener import setup_listeners
 import os
 import asyncio
 import logging
-import uvicorn
-import multiprocessing
 from models.db_operations import DBOperations
 from scheduler.summary_scheduler import SummaryScheduler
 from scheduler.chat_updater import ChatUpdater
 from handlers.bot_handler import send_welcome_message
-from rss.main import app as rss_app
 from utils.log_config import setup_logging
 
 # 设置Docker日志的默认配置，如果docker-compose.yml中没有配置日志选项将使用这些值
@@ -68,15 +65,6 @@ bot_client = TelegramClient('./sessions/bot', api_id, api_hash)
 engine = init_db()
 
 
-def run_rss_server(host: str, port: int):
-    """在新进程中运行 RSS 服务器"""
-    uvicorn.run(
-        rss_app,
-        host=host,
-        port=port
-    )
-
-
 async def start_clients():
     # 初始化 DBOperations
     global db_ops, scheduler, chat_updater
@@ -107,26 +95,6 @@ async def start_clients():
         chat_updater = ChatUpdater(user_client)
         await chat_updater.start()
 
-        # 如果启用了 RSS 服务
-        if os.getenv('RSS_ENABLED', '').lower() == 'true':
-            try:
-                rss_host = os.getenv('RSS_HOST', '0.0.0.0')
-                rss_port = int(os.getenv('RSS_PORT', '8000'))
-                logger.info(f"正在启动 RSS 服务 (host={rss_host}, port={rss_port})")
-                
-                # 在新进程中启动 RSS 服务
-                rss_process = multiprocessing.Process(
-                    target=run_rss_server,
-                    args=(rss_host, rss_port)
-                )
-                rss_process.start()
-                logger.info("RSS 服务启动成功")
-            except Exception as e:
-                logger.error(f"启动 RSS 服务失败: {str(e)}")
-                logger.exception(e)
-        else:
-            logger.info("RSS 服务未启用")
-
         # 发送欢迎消息
         await send_welcome_message(bot_client)
 
@@ -145,10 +113,6 @@ async def start_clients():
         # 停止聊天信息更新器
         if chat_updater:
             chat_updater.stop()
-        # 如果 RSS 服务在运行，停止它
-        if 'rss_process' in locals() and rss_process.is_alive():
-            rss_process.terminate()
-            rss_process.join()
 
 
 async def register_bot_commands(bot):
@@ -310,10 +274,6 @@ async def register_bot_commands(bot):
         BotCommand(
             command='delete_rule',
             description='删除转发规则'
-        ),
-        BotCommand(
-            command='delete_rss_user',
-            description='删除RSS用户'
         ),
 
 

@@ -3,7 +3,7 @@ from utils.settings import load_ai_models
 from enums.enums import ForwardMode, MessageMode, PreviewMode, AddMode, HandleMode
 from models.models import get_session
 from telethon import Button
-from utils.constants import RSS_ENABLED, UFB_ENABLED
+from utils.constants import UFB_ENABLED
 
 AI_MODELS = load_ai_models()
 
@@ -172,15 +172,6 @@ RULE_SETTINGS = {
             False: '关闭'
         },
         'toggle_action': 'toggle_enable_comment_button',
-        'toggle_func': lambda current: not current
-    },
-    'only_rss': {
-        'display_name': '只转发到RSS',
-        'values': {
-            True: '开启',
-            False: '关闭'
-        },
-        'toggle_action': 'toggle_only_rss',
         'toggle_func': lambda current: not current
     },
     'close_settings': {
@@ -425,24 +416,6 @@ OTHER_SETTINGS = {
     }
 }
 
-PUSH_SETTINGS = {
-    'enable_push_channel': {
-        'display_name': '启用推送',
-        'toggle_action': 'toggle_enable_push',
-        'toggle_func': None
-    },
-    'add_push_channel': {
-        'display_name': '➕ 添加推送配置',
-        'toggle_action': 'add_push_channel',
-        'toggle_func': None
-    },
-    'enable_only_push': {
-        'display_name': '只转发到推送配置',
-        'toggle_action': 'toggle_enable_only_push',
-        'toggle_func': None
-    }
-}
-
 async def create_settings_text(rule):
     """创建设置信息文本"""
     text = (
@@ -495,26 +468,13 @@ async def create_buttons(rule):
             )
         ])
 
-        if RSS_ENABLED == 'false':
-            # 处理模式
-            buttons.append([
-                Button.inline(
-                    f"⚙️ 处理模式: {RULE_SETTINGS['handle_mode']['values'][rule.handle_mode]}",
-                    f"toggle_handle_mode:{rule.id}"
-                )
-            ])
-        else:
-            # 处理模式
-            buttons.append([
-                Button.inline(
-                    f"⚙️ 处理模式: {RULE_SETTINGS['handle_mode']['values'][rule.handle_mode]}",
-                    f"toggle_handle_mode:{rule.id}"
-                ),
-                Button.inline(
-                    f"⚠️ 只转发到RSS: {RULE_SETTINGS['only_rss']['values'][rule.only_rss]}",
-                    f"toggle_only_rss:{rule.id}"
-                )
-            ])
+        # 处理模式
+        buttons.append([
+            Button.inline(
+                f"⚙️ 处理模式: {RULE_SETTINGS['handle_mode']['values'][rule.handle_mode]}",
+                f"toggle_handle_mode:{rule.id}"
+            )
+        ])
 
 
         buttons.append([
@@ -628,13 +588,6 @@ async def create_buttons(rule):
             ])
 
     
-            buttons.append([
-                Button.inline(
-                    "🔔 推送设置",
-                    f"push_settings:{rule.id}"
-                )
-            ])
-
             buttons.append([
                 Button.inline(
                     "👈 返回",

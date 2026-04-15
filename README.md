@@ -13,7 +13,7 @@
 </div>
 
 ## 📖 简介
-Telegram 转发器是一个强大的消息转发工具，只需要你的账号加入频道/群聊即可以将指定聊天中的消息转发到其他聊天，不需要bot进入对应的频道/群组即可监听。可用于信息流整合过滤，消息提醒，内容收藏等多种场景, 不受转发/复制禁止的限制。此外，利用 Apprise 强大的推送功能，你可以轻松将消息分发至聊天软件、邮件、短信、Webhooks、APIs 等各种平台。
+Telegram 转发器是一个强大的消息转发工具，只需要你的账号加入频道/群聊即可以将指定聊天中的消息转发到其他聊天，不需要bot进入对应的频道/群组即可监听。可用于信息流整合过滤，消息提醒，内容收藏等多种场景, 不受转发/复制禁止的限制。
 
 ## ✨ 特性
 
@@ -23,8 +23,6 @@ Telegram 转发器是一个强大的消息转发工具，只需要你的账号�
 - 📋 **内容修改**：支持多种方式修改消息内容
 - 🤖 **AI 处理**：支持使用各大厂商的AI接口
 - 📹 **媒体过滤**：支持过滤指定类型的媒体文件
-- 📰 **RSS订阅**：支持RSS订阅
-- 📢 **多平台推送**：支持通过Apprise推送到多个平台
 
 ## 📋 目录
 
@@ -48,15 +46,6 @@ Telegram 转发器是一个强大的消息转发工具，只需要你的账号�
     - [自定义模型](#自定义模型)
     - [AI处理能力](#ai-处理)
     - [定时总结功能](#定时总结)
-  - [📢 推送功能](#-推送功能)
-    - [设置说明](#设置说明)
-  - [📰 RSS订阅](#-RSS订阅)
-    - [启用RSS功能](#启用rss功能)
-    - [访问RSS仪表盘](#访问rss仪表盘) 
-    - [Nginx配置](#nginx配置)
-    - [RSS配置说明](#rss配置管理)
-    - [特殊设置项](#特殊设置项)
-    - [注意事项](#注意事项)
   
 - [🎯 特殊功能](#-特殊功能)
   - [🔗 链接转发功能](#-链接转发功能)
@@ -346,122 +335,6 @@ AI处理提示词中可以使用以下格式：
 
 > 注意：总结功能会消耗较多的 API 额度，请根据需要开启。
 
-### 📢 推送功能
-
-除了telegram内部消息转发外，项目还集成了Apprise，利用其强大的推送功能，你可以轻松将消息分发至聊天软件、邮件、短信、Webhooks、APIs 等各种平台。
-
-| 推送设置主界面 | 推送设置子界面 |
-|---------|------|
-| ![img](./images/settings_push.png) | ![img](./images/settings_push_sub1.png) |
-
-#### 设置说明
-
-| 设置选项 | 说明 |
-|---------|------|
-| 只转发到推送配置 | 开启后跳过转发过滤器,直接跳到推送过滤器 |
-| 媒体发送方式 | 支持两种模式:<br>- 单个:每个媒体文件单独推送一条消息<br>- 全部:将所有媒体文件合并到一条消息中推送<br>具体使用哪种模式取决于目标平台是否支持一次推送多个附件 |
-
-### 如何添加推送配置？
-完整的推送平台列表和配置格式请参考 [Apprise Wiki](https://github.com/caronc/apprise/wiki)
-
-**示例：使用 ntfy.sh 推送**
-
-*   假设你想推送到 ntfy.sh 上的一个名为 `my_topic` 的主题。
-*   根据 Apprise Wiki，其格式为 `ntfy://ntfy.sh/你的主题名`。
-*   那么，你需要添加的配置 URL 就是：
-    ```
-    ntfy://ntfy.sh/my_topic
-    ```
-
-
-
-## 📰 RSS订阅
-
-项目集成了将Telegram消息转换为RSS Feed的功能，可以轻松地将Telegram频道/群组内容转为标准RSS格式，方便通过RSS阅读器跟踪。
-
-### 启用RSS功能
-
-1. 在 `.env` 文件中配置RSS相关参数：
-   ```ini
-   # RSS配置
-   # 是否启用RSS功能 (true/false)
-   RSS_ENABLED=true
-   # RSS基础访问URL，留空则使用默认的访问URL（例如：https://rss.example.com）
-   RSS_BASE_URL=
-   # RSS媒体文件基础URL，留空则使用默认的访问URL（例如：https://media.example.com）
-   RSS_MEDIA_BASE_URL=
-   ```
-2. docker-compose.yml取消注释
-   ```
-    # 如果需要使用 RSS 功能，请取消以下注释
-     ports:
-       - 9804:8000
-   ```
-3. 重启服务以启用RSS功能：
-   ```bash
-   docker-compose restart
-   ```
-> 注意：旧版本用户需要用新的docker-compose.yml文件重新部署：[docker-compose.yml](./docker-compose.yml)
-### 访问RSS仪表盘
-
-浏览器访问 `http://你的服务器地址:9804/`
-
-### Nginx配置
-```
- location / {
-        proxy_pass http://127.0.0.1:9804;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-    }
-```
-
-### RSS配置管理
-
-相关界面
-
-| 登录界面 | Dashboard界面 | 新建/编辑配置界面 |
-|---------|------|------|
-| ![img](./images/rss_login.png) | ![img](./images/rss_dashboard.png) | ![img](./images/rss_create_config.png) |
-
-
-### 新建/编辑配置界面说明
-| 设置选项 | 说明 |
-|---------|------|
-| 规则ID | 选择现有的一个转发规则，用于生成RSS订阅 |
-| 复制已有配置 | 选择现有的一个RSS配置，复制它的配置到当前表单|
-|订阅源标题| 设置订阅源标题 |
-|自动填充| 点击后自动根据规则的源聊天窗口名字生成订阅源标题 |
-|订阅源描述| 设置订阅源描述 |
-|语言| 占位，暂无特殊功能 |
-|最大条目数| 设置RSS订阅源的最大条目数，默认50，对于媒体比较多的聊天源，请根据硬盘实际硬盘大小设置 |
-|使用 AI 提取标题和内容| 启用后，将使用AI服务自动分析消息，提取标题和内容和整理格式，AI模型请在bot中设置，不受bot中“是否开启 AI 处理”选项影响，此选项开启后和下面所有配置互斥 |
-|AI 提取提示词| 设置AI提取标题和内容的提示词，如需自定义，请务必让AI返回以下json格式内容：`{ "title": "标题", "content": "正文内容" }` |
-|自动提取标题| 启用后，由预设好的正则表达式自动提取标题 |
-|自动提取内容| 启用后，由预设好的正则表达式自动提取内容 |
-|自动将 Markdown 转换为 HTML| 启用后，将使用相关库自动将Telegram中的Markdown格式转换为标准HTML，如需自行处理，请在bot中使用 `/replace` 自行替换 |
-|启用自定义标题提取正则表达式| 启用后，将使用自定义正则表达式提取标题 |
-|启用自定义内容提取正则表达式| 启用后，将使用自定义正则表达式提取内容 |
-|优先级| 设置正则表达式的执行顺序，数字越小优先级越高。系统会按优先级从高到低依次执行正则表达式，**前一个正则表达式提取的结果会作为下一个的输入**，直到完成所有提取 |
-|正则表达式测试| 可用于测试当前正则表达式是否匹配目标文本 |
-
-### 特殊说明
-- 若只开启自动提取标题，而不开启自动提取内容，则内容会是包含提取了标题的完整的Telegram消息内容
-- 若内容处理选项和正则表达式配置都为空，会自动匹配前20个字符作为标题，内容则为原始消息
-
-
-### 特殊设置项
-若在.env中开启`RSS_ENABLED=true`，则会在bot的设置中会新增一个`只转发到RSS`的选项，启用后，消息经过各种处理后会在RSS过滤器处理后中断，不会执行转发/编辑
-
-
-### 注意事项
-
-- 没有找回密码功能，请妥善保管你的账号密码
-
 ## 🎯 特殊功能
 
 ### 🔗 链接转发功能
@@ -523,9 +396,6 @@ AI处理提示词中可以使用以下格式：
 /import_regex_keyword(/irk) <同时发送文件> - 导入正则关键字
 /import_replace(/ir) <同时发送文件> - 导入替换规则
 
-RSS相关
-/delete_rss_user(/dru) [用户名] - 删除RSS用户
-
 UFB相关
 /ufb_bind(/ub) <域名> - 绑定UFB域名
 /ufb_unbind(/uu) - 解绑UFB域名
@@ -540,7 +410,6 @@ UFB相关
 
 ## 💐 致谢
 
-- [Apprise](https://github.com/caronc/apprise)
 - [Telethon](https://github.com/LonamiWebs/Telethon)
 
 ## ☕ 捐赠

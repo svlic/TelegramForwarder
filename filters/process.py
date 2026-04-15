@@ -12,8 +12,6 @@ from filters.edit_filter import EditFilter
 from filters.comment_button_filter import CommentButtonFilter
 from filters.init_filter import InitFilter
 from filters.reply_filter import ReplyFilter
-from filters.rss_filter import RSSFilter
-from filters.push_filter import PushFilter
 logger = logging.getLogger(__name__)
 
 async def process_forward_rule(client, event, chat_id, rule):
@@ -58,9 +56,6 @@ async def process_forward_rule(client, event, chat_id, rule):
     # 添加评论区按钮过滤器
     filter_chain.add_filter(CommentButtonFilter())
 
-    # 添加RSS过滤器
-    filter_chain.add_filter(RSSFilter())
-    
     # 添加编辑过滤器（编辑原始消息）
     filter_chain.add_filter(EditFilter())
 
@@ -70,9 +65,6 @@ async def process_forward_rule(client, event, chat_id, rule):
     # 添加回复过滤器（处理媒体组消息的评论区按钮）
     filter_chain.add_filter(ReplyFilter())
 
-    # 添加推送过滤器
-    filter_chain.add_filter(PushFilter())
-    
     # 添加删除原始消息过滤器（最后执行）
     filter_chain.add_filter(DeleteOriginalFilter())
     

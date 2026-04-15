@@ -6,10 +6,7 @@ from telethon import Button
 from handlers.button.callback.ai_callback import *
 from handlers.button.callback.media_callback import *
 from handlers.button.callback.other_callback import *
-from handlers.button.callback.push_callback import *
 import logging
-import aiohttp
-from utils.constants import RSS_HOST, RSS_PORT
 from utils.auto_delete import respond_and_delete,reply_and_delete
 from utils.common import check_and_clean_chats
 from handlers.button.button_helpers import create_sync_rule_buttons,create_other_settings_buttons
@@ -118,20 +115,6 @@ async def callback_delete(event, rule_id, session, message, data):
         
         # 提交规则删除的更改
         session.commit()
-        
-        # 尝试删除RSS服务中的相关数据
-        try:
-            rss_url = f"http://{RSS_HOST}:{RSS_PORT}/api/rule/{rule_id}"
-            async with aiohttp.ClientSession() as client_session:
-                async with client_session.delete(rss_url) as response:
-                    if response.status == 200:
-                        logger.info(f"成功删除RSS规则数据: {rule_id}")
-                    else:
-                        response_text = await response.text()
-                        logger.warning(f"删除RSS规则数据失败 {rule_id}, 状态码: {response.status}, 响应: {response_text}")
-        except Exception as rss_err:
-            logger.error(f"调用RSS删除API时出错: {str(rss_err)}")
-            # 不影响主要流程，继续执行
         
         # 使用通用方法检查并清理不再使用的聊天记录
         deleted_chats = await check_and_clean_chats(session, rule_obj)
@@ -554,8 +537,6 @@ async def update_rule_setting(event, rule_id, session, message, field_name, conf
             )
         elif setting_type == 'other':
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule))
-        elif setting_type == 'push':
-            await event.edit(PUSH_SETTINGS_TEXT, buttons=await create_push_settings_buttons(rule), link_preview=False)
         display_name = config.get('display_name', field_name)
         if field_name == 'use_bot':
             await event.answer(f'已切换到{"机器人" if new_value else "用户账号"}模式')
@@ -687,15 +668,4 @@ CALLBACK_HANDLERS = {
     'cancel_set_original_link': callback_cancel_set_original_link,
     'toggle_reverse_blacklist': callback_toggle_reverse_blacklist,
     'toggle_reverse_whitelist': callback_toggle_reverse_whitelist,
-    # 推送设置
-    'push_settings': callback_push_settings,
-    'toggle_enable_push': callback_toggle_enable_push,
-    'toggle_enable_only_push': callback_toggle_enable_only_push,
-    'add_push_channel': callback_add_push_channel,
-    'cancel_add_push_channel': callback_cancel_add_push_channel,
-    'toggle_push_config': callback_toggle_push_config,
-    'toggle_push_config_status': callback_toggle_push_config_status,
-    'toggle_media_send_mode': callback_toggle_media_send_mode,
-    'delete_push_config': callback_delete_push_config,
-    'push_page': callback_push_page,
 }

@@ -33,10 +33,6 @@ ufb/config/*
 **/test/
 **/images/
 
-# 忽略 RSS 相关数据和临时文件
-/rss/media/*
-/rss/data/*
-
 # 忽略日志文件
 logs/*
 
