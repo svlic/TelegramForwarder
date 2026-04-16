@@ -1,11 +1,7 @@
-import os
-from utils.settings import load_ai_models
 from enums.enums import ForwardMode, MessageMode, PreviewMode, AddMode, HandleMode
 from models.models import get_db_session
 from telethon import Button
 from utils.constants import UFB_ENABLED
-
-AI_MODELS = load_ai_models()
 
 # 规则配置字段定义
 RULE_SETTINGS = {
@@ -186,12 +182,7 @@ AI_SETTINGS = {
     },
     'ai_model': {
         'display_name': 'AI模型',
-        'values': {
-            None: '默认',
-            '': '默认',
-            **{model: model for model in AI_MODELS}
-        },
-        'toggle_action': 'change_model',
+        'toggle_action': 'set_ai_model',
         'toggle_func': None
     },
     'ai_prompt': {

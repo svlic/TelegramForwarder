@@ -1,56 +1,9 @@
 import os
-import json
 import logging
 
-from utils.file_creator import create_default_configs, AI_MODELS_CONFIG
+from utils.file_creator import create_default_configs
 
 logger = logging.getLogger(__name__)
-
-def load_ai_models(type="list"):
-    """
-    加载AI模型配置
-    
-    参数:
-        type (str): 返回类型
-            - "list": 返回所有模型的平铺列表 [model1, model2, ...]
-            - "dict"/"json": 返回原始配置格式 {provider: [model1, model2, ...]}
-    
-    返回值:
-        根据type参数返回不同格式的模型配置
-    """
-    try:
-        models_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'ai_models.json')
-        
-        # 如果配置文件不存在，创建默认配置
-        if not os.path.exists(models_path):
-            create_default_configs()
-            
-        # 读取JSON配置文件
-        with open(models_path, 'r', encoding='utf-8') as f:
-            models_config = json.load(f)
-            
-            # 根据type参数返回不同格式
-            if type.lower() in ["dict", "json"]:
-                return models_config
-            
-            # 默认返回模型列表
-            all_models = []
-            for provider, models in models_config.items():
-                all_models.extend(models)
-                
-            # 确保列表不为空
-            if all_models:
-                return all_models
-                
-    except (FileNotFoundError, IOError, json.JSONDecodeError) as e:
-        logger.error(f"加载AI模型配置失败: {e}")
-    
-    # 如果出现任何问题，根据type返回默认值
-    if type.lower() in ["dict", "json"]:
-        return AI_MODELS_CONFIG
-    
-    # 默认返回模型列表
-    return ["gpt-3.5-turbo", "gemini-1.5-flash", "claude-3-sonnet"]
 
 def load_summary_times():
     """加载总结时间列表"""

@@ -4,7 +4,7 @@ from managers.state_manager import state_manager
 import asyncio
 from telethon.tl import types
 
-from handlers.button.button_helpers import create_ai_settings_buttons, create_model_buttons, create_summary_time_buttons
+from handlers.button.button_helpers import create_ai_settings_buttons, create_summary_time_buttons, create_model_buttons
 from models.models import ForwardRule, RuleSync
 from telethon import Button
 import logging
@@ -142,6 +142,13 @@ async def callback_time_page(event, rule_id, session, message, data):
     _, rule_id, page = data.split(':')
     page = int(page)
     await event.edit("请选择总结时间：", buttons=await create_summary_time_buttons(rule_id, page=page))
+    return
+
+
+async def callback_model_page(event, rule_id, session, message, data):
+    _, rule_id, page = data.split(':')
+    page = int(page)
+    await event.edit("请选择AI模型：", buttons=await create_model_buttons(rule_id, page=page))
     return
 
 
@@ -285,17 +292,32 @@ async def callback_select_model(event, rule_id, session, message, data):
 
 
 
-async def callback_model_page(event, rule_id, session, message, data):
-    # 处理翻页
-    _, rule_id, page = data.split(':')
-    page = int(page)
-    await event.edit("请选择AI模型：", buttons=await create_model_buttons(rule_id, page=page))
-    return
+async def callback_set_ai_model(event, rule_id, session, message, data):
+    logger.info(f"开始处理设置AI模型回调 - rule_id: {rule_id}")
+    
+    rule = session.query(ForwardRule).get(rule_id)
+    if not rule:
+        await event.answer('规则不存在')
+        return
 
+    if isinstance(event.chat, types.Channel):
+        if not await is_admin(event):
+            await event.answer('只有管理员可以修改设置')
+            return
 
-
-async def callback_change_model(event, rule_id, session, message, data):
     await event.edit("请选择AI模型：", buttons=await create_model_buttons(rule_id, page=0))
+
+
+async def callback_cancel_set_model(event, rule_id, session, message, data):
+    rule_id = data.split(':')[1]
+    try:
+        rule = session.query(ForwardRule).get(int(rule_id))
+        if rule:
+            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+            await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
+            await event.answer("已取消设置")
+    finally:
+        session.close()
     return
 
 
