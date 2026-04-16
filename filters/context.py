@@ -23,6 +23,7 @@ class MessageContext:
         self.buttons = message.buttons if message and hasattr(message, 'buttons') else None
         
         self.should_forward = True
+        self.processing_failed = False
         
         grouped_id = message.grouped_id if message and hasattr(message, 'grouped_id') else None
         self.is_media_group = grouped_id is not None
@@ -35,5 +36,4 @@ class MessageContext:
         self.comment_link = None
         
     def clone(self):
-        """创建上下文的副本"""
         return copy.deepcopy(self) 

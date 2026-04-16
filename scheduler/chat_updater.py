@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import pytz
 import logging
 from telethon import TelegramClient
-from models.models import get_session, Chat
+from models.models import get_db_session, Chat
 import traceback
 from utils.constants import DEFAULT_TIMEZONE, CHAT_UPDATE_TIME
 logger = logging.getLogger(__name__)
@@ -71,8 +71,7 @@ class ChatUpdater:
     async def _update_all_chats(self):
         """更新所有聊天信息"""
         logger.info("开始更新所有聊天信息...")
-        session = get_session()
-        try:
+        with get_db_session() as session:
             # 获取所有聊天
             chats = session.query(Chat).all()
             total_chats = len(chats)
@@ -136,12 +135,6 @@ class ChatUpdater:
                 await asyncio.sleep(1)
                 
             logger.info(f"聊天信息更新完成。总计: {total_chats}, 更新: {updated_count}, 跳过: {skipped_count}, 错误: {error_count}")
-            
-        except Exception as e:
-            logger.error(f"更新聊天信息时出错: {str(e)}")
-            logger.error(f"错误详情: {traceback.format_exc()}")
-        finally:
-            session.close()
     
     def stop(self):
         """停止定时任务"""

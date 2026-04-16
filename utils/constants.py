@@ -60,6 +60,7 @@ USER_MESSAGE_DELETE_ENABLE = True
 
 # -- 媒体设置 --
 DEFAULT_MAX_MEDIA_SIZE = 10
+TEMP_DIR = os.path.join(os.getcwd(), 'temp')
 
 # -- 分页设置 --
 RULES_PER_PAGE = 5
@@ -73,6 +74,9 @@ DEFAULT_SUMMARY_TIME = '07:00'  # 默认总结时间
 # -- AI 总结批次 --
 SUMMARY_BATCH_SIZE = 5
 SUMMARY_BATCH_DELAY = 2  # 秒
+
+# -- AI 超时 --
+AI_PROCESS_TIMEOUT = 60  # 秒
 
 # -- 内联键盘布局 --
 SUMMARY_TIME_ROWS = 3

@@ -3,7 +3,7 @@ from filters.base_filter import BaseFilter
 from utils.common import check_keywords
 from utils.common import get_main_module
 from ai import get_ai_provider
-from utils.constants import DEFAULT_AI_PROMPT
+from utils.constants import DEFAULT_AI_PROMPT, AI_PROCESS_TIMEOUT
 from datetime import datetime, timedelta
 import asyncio
 import re
@@ -147,8 +147,17 @@ class AIFilter(BaseFilter):
                     text_to_process = context.message_text if context.message_text else "[图片消息]"
                     
                     logger.info(f"开始AI处理，文本长度: {len(text_to_process)}，图片数量: {len(image_files)}")
-                    processed_text = await _ai_handle(text_to_process, rule, image_files)
-                    context.message_text = processed_text
+                    
+                    try:
+                        processed_text = await asyncio.wait_for(
+                            _ai_handle(text_to_process, rule, image_files),
+                            timeout=AI_PROCESS_TIMEOUT
+                        )
+                        context.message_text = processed_text
+                    except asyncio.TimeoutError:
+                        logger.error(f'AI处理超时 ({AI_PROCESS_TIMEOUT}秒)')
+                        context.errors.append("AI处理超时")
+                        return True
 
                     
                     # 如果需要在AI处理后再次检查关键字

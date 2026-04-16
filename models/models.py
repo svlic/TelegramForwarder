@@ -369,11 +369,23 @@ def init_db():
 
     return engine
 
+_ENGINE = None
+_SESSION_FACTORY = None
+
+def _get_engine():
+    global _ENGINE
+    if _ENGINE is None:
+        _ENGINE = create_engine(DATABASE_URL, pool_pre_ping=True)
+    return _ENGINE
+
+def _get_session_factory():
+    global _SESSION_FACTORY
+    if _SESSION_FACTORY is None:
+        _SESSION_FACTORY = sessionmaker(bind=_get_engine())
+    return _SESSION_FACTORY
+
 def get_session():
-    """创建会话工厂"""
-    engine = create_engine('sqlite:///./db/forward.db')
-    Session = sessionmaker(bind=engine)
-    return Session()
+    return _get_session_factory()()
 
 from contextlib import contextmanager
 

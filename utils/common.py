@@ -15,6 +15,25 @@ from utils.constants import AI_SETTINGS_TEXT,MEDIA_SETTINGS_TEXT
 
 logger = logging.getLogger(__name__)
 
+def normalize_channel_id(chat_id):
+    """Normalize channel/supergroup ID to -100XXXXXXXXX format"""
+    chat_id_str = str(chat_id)
+    if chat_id_str.startswith('-100'):
+        return int(chat_id_str)
+    elif chat_id_str.startswith('100'):
+        return int(f'-{chat_id_str}')
+    elif not chat_id_str.startswith('-'):
+        return int(f'-100{chat_id_str}')
+    return int(chat_id_str)
+
+def parse_telegram_id(id_str):
+    """Parse various Telegram ID formats from string"""
+    id_str = id_str.strip().replace('https://t.me/c/', '').replace('https://t.me/', '')
+    try:
+        return int(id_str)
+    except ValueError:
+        return None
+
 async def get_main_module():
     """获取 main 模块"""
     try:
@@ -382,17 +401,10 @@ def get_admin_list():
 
 
 async def check_keywords(rule, message_text, event = None):
-    """
-    检查消息是否匹配关键字规则
+    # Handle None or empty message text
+    if not message_text:
+        message_text = ""
 
-    Args:
-        rule: 转发规则对象，包含 forward_mode 和 keywords 属性
-        message_text: 要检查的消息文本
-        event: 可选的消息事件对象
-
-    Returns:
-        bool: 是否应该转发消息
-    """
     # 处理用户信息过滤
     if rule.is_filter_user_info and event:
         message_text = await process_user_info(event, rule.id, message_text)

@@ -7,11 +7,14 @@ from message_listener import setup_listeners
 import os
 import asyncio
 import logging
+import glob
+import shutil
 from models.db_operations import DBOperations
 from scheduler.summary_scheduler import SummaryScheduler
 from scheduler.chat_updater import ChatUpdater
 from handlers.bot_handler import send_welcome_message
 from utils.log_config import setup_logging
+from utils.constants import TEMP_DIR
 
 # 设置Docker日志的默认配置，如果docker-compose.yml中没有配置日志选项将使用这些值
 os.environ.setdefault('DOCKER_LOG_MAX_SIZE', '10m')
@@ -49,6 +52,16 @@ async def init_db_ops():
 # 创建文件夹
 os.makedirs('./sessions', exist_ok=True)
 os.makedirs('./temp', exist_ok=True)
+
+# Clean up residual temp files from previous runs
+for f in glob.glob(os.path.join(TEMP_DIR, '*')):
+    try:
+        if os.path.isfile(f):
+            os.remove(f)
+        elif os.path.isdir(f):
+            shutil.rmtree(f)
+    except Exception:
+        pass
 
 
 # 创建客户端

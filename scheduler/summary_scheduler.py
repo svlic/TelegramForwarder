@@ -1,7 +1,8 @@
 import asyncio
 from datetime import datetime, timedelta
 import pytz
-from models.models import get_session, ForwardRule
+import traceback
+from models.models import get_session, get_db_session, ForwardRule
 import logging
 from telethon import TelegramClient, errors
 from ai import get_ai_provider
@@ -122,8 +123,7 @@ class SummaryScheduler:
 
     async def _execute_summary(self, rule_id, is_now=False):
         """执行单个规则的总结任务"""
-        session = get_session()
-        try:
+        with get_db_session() as session:
             rule = session.get(ForwardRule, rule_id)
             if not is_now:
                 if not rule or not rule.is_summary:
@@ -307,14 +307,10 @@ class SummaryScheduler:
                 logger.error(f'执行规则 {rule_id} 的总结任务时出错: {str(e)}')
                 logger.error(f'错误详情: {traceback.format_exc()}')
 
-        finally:
-            session.close()
-
     async def start(self):
         """启动调度器"""
         logger.info("开始启动调度器...")
-        session = get_session()
-        try:
+        with get_db_session() as session:
             # 获取所有启用了总结功能的规则
             rules = session.query(ForwardRule).filter_by(is_summary=True).all()
             logger.info(f"找到 {len(rules)} 个启用了总结功能的规则")
@@ -337,11 +333,6 @@ class SummaryScheduler:
                 logger.info("没有找到启用了总结功能的规则")
 
             logger.info("调度器启动完成")
-        except Exception as e:
-            logger.error(f"启动调度器时出错: {str(e)}")
-            logger.error(f"错误详情: {traceback.format_exc()}")
-        finally:
-            session.close()
 
     def stop(self):
         """停止所有任务"""
@@ -351,8 +342,7 @@ class SummaryScheduler:
 
     async def execute_all_summaries(self):
         """立即执行所有启用了总结功能的规则"""
-        session = get_session()
-        try:
+        with get_db_session() as session:
             rules = session.query(ForwardRule).filter_by(is_summary=True).all()
             # 使用 gather 但限制并发数
             tasks = [self._execute_summary(rule.id, is_now=True) for rule in rules]
@@ -360,6 +350,3 @@ class SummaryScheduler:
                 batch = tasks[i:i+2]
                 await asyncio.gather(*batch)
                 await asyncio.sleep(1)  # 每批次之间稍微暂停
-
-        finally:
-            session.close()

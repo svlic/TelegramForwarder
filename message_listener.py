@@ -78,8 +78,8 @@ async def handle_user_message(event, bot_client):
     # 检查是否频道消息
     if isinstance(event.chat, types.Channel) and state_manager.check_state():
         sender_id = os.getenv('USER_ID')
-        # 频道ID需要加上100前缀
-        chat_id = int(f"100{chat_id}")
+        # 频道ID需要转为标准格式 -100XXXXXXXXX
+        chat_id = normalize_channel_id(chat_id)
     else:
         sender_id = event.sender_id
 
@@ -150,8 +150,8 @@ async def handle_bot_message(event, bot_client):
         # 检查是否频道消息
         if isinstance(event.chat, types.Channel) and state_manager.check_state():
             sender_id = os.getenv('USER_ID')
-            # 频道ID需要加上100前缀
-            chat_id = int(f"100{chat_id}")
+            # 频道ID需要转为标准格式 -100XXXXXXXXX
+            chat_id = normalize_channel_id(chat_id)
         else:
             sender_id = event.sender_id
 

@@ -4,6 +4,7 @@ import asyncio
 from filters.base_filter import BaseFilter
 from enums.enums import PreviewMode
 from telethon.errors import FloodWaitError
+from utils.common import normalize_channel_id
 
 logger = logging.getLogger(__name__)
 
@@ -34,31 +35,13 @@ class SenderFilter(BaseFilter):
         target_chat = rule.target_chat
         target_chat_id = int(target_chat.telegram_chat_id)
 
+        # Normalize channel ID to standard format
+        target_chat_id = normalize_channel_id(target_chat_id)
+
         # 预先获取目标聊天实体
         try:
-            entity = None
-            try:
-                # 直接使用ID
-                entity = await client.get_entity(target_chat_id)
-                logger.info(f'成功获取目标聊天实体: {target_chat.name} (ID: {target_chat_id})')
-            except Exception as e1:
-                try:
-                    # 尝试添加-100前缀
-                    if not str(target_chat_id).startswith('-100'):
-                        super_group_id = int(f'-100{abs(target_chat_id)}')
-                        entity = await client.get_entity(super_group_id)
-                        target_chat_id = super_group_id  # 更新使用正确的ID
-                        logger.info(f'使用私有群组ID格式成功获取实体: {target_chat.name} (ID: {target_chat_id})')
-                except Exception as e2:
-                    try:
-                        # 尝试常规群组格式
-                        if not str(target_chat_id).startswith('-'):
-                            group_id = int(f'-{abs(target_chat_id)}')
-                            entity = await client.get_entity(group_id)
-                            target_chat_id = group_id  # 更新使用正确的ID
-                            logger.info(f'使用常规群组ID格式成功获取实体: {target_chat.name} (ID: {target_chat_id})')
-                    except Exception as e3:
-                        logger.warning(f'无法获取目标聊天实体，尝试继续发送: {e1}, {e2}, {e3}')
+            entity = await client.get_entity(target_chat_id)
+            logger.info(f'成功获取目标聊天实体: {target_chat.name} (ID: {target_chat_id})')
         except Exception as e:
             logger.warning(f'获取目标聊天实体时出错: {str(e)}')
 

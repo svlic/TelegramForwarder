@@ -10,20 +10,9 @@ class ReplaceFilter(BaseFilter):
     """
     
     async def _process(self, context):
-        """
-        处理消息文本替换
-        
-        Args:
-            context: 消息上下文
-            
-        Returns:
-            bool: 是否继续处理
-        """
         rule = context.rule
         message_text = context.message_text
 
-        #打印context的所有属性
-        # logger.info(f"ReplaceFilter处理消息前，context: {context.__dict__}")
         # 如果不需要替换，直接返回
         if not rule.is_replace or not message_text:
             return True
@@ -38,9 +27,9 @@ class ReplaceFilter(BaseFilter):
                     break  # 如果是全文替换，就不继续处理其他规则
                 else:
                     try:
-                        # 正则替换
+                        # 正则替换 - 先收集匹配结果再替换
                         old_text = message_text
-                        matches = re.finditer(replace_rule.pattern, message_text)
+                        matches = list(re.finditer(replace_rule.pattern, message_text))
                         message_text = re.sub(
                             replace_rule.pattern,
                             replace_rule.content or '',
@@ -60,7 +49,4 @@ class ReplaceFilter(BaseFilter):
         except Exception as e:
             logger.error(f'应用替换规则时出错: {str(e)}')
             context.errors.append(f"替换规则错误: {str(e)}")
-            return True  # 即使替换出错，仍然继续处理 
-        finally:
-            # logger.info(f"ReplaceFilter处理消息后，context: {context.__dict__}")
-            pass
+            return True
