@@ -1,5 +1,8 @@
 from handlers.button.button_helpers import *
 from utils.auto_delete import reply_and_delete
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def show_list(event, command, items, formatter, title, page=1):
     """显示分页列表"""
@@ -12,7 +15,8 @@ async def show_list(event, command, items, formatter, title, page=1):
     if not items:
         try:
             return await event.edit(f'没有找到任何{title}')
-        except:
+        except Exception as e:
+            logger.debug(f"编辑消息失败，尝试发送新消息: {e}")
             return await reply_and_delete(event,f'没有找到任何{title}')
 
     # 获取当前页的项目
@@ -52,6 +56,7 @@ async def show_list(event, command, items, formatter, title, page=1):
 
     try:
         return await event.edit(text, buttons=buttons, parse_mode='markdown')
-    except:
+    except Exception as e:
+        logger.debug(f"编辑消息失败，尝试发送新消息: {e}")
         return await reply_and_delete(event,text, buttons=buttons, parse_mode='markdown')
 

@@ -3,7 +3,7 @@ from utils.constants import *
 from utils.settings import load_summary_times, load_ai_models, load_delay_times, load_max_media_size, load_media_extensions
 from handlers.button.settings_manager import AI_SETTINGS, AI_MODELS, MEDIA_SETTINGS,OTHER_SETTINGS
 from utils.common import get_db_ops
-from models.models import get_session
+from models.models import get_db_session
 from sqlalchemy import text
 from models.models import ForwardRule
 
@@ -100,11 +100,8 @@ async def create_other_settings_buttons(rule=None,rule_id=None):
     if rule_id is None:
         rule_id = rule.id
     else:
-        session = get_session()
-        try:
+        with get_db_session() as session:
             rule = session.query(ForwardRule).get(int(rule_id))
-        finally:
-            session.close()
 
     current_row = []
     for field, config in OTHER_SETTINGS.items():
@@ -447,9 +444,8 @@ async def create_media_extensions_buttons(rule_id, page=0):
 
     # 获取当前规则已选择的扩展名
     db_ops = await get_db_ops()
-    session = get_session()
     selected_extensions = []
-    try:
+    with get_db_session() as session:
         # 使用db_ops.get_media_extensions方法获取已选择的扩展名
         selected_extensions = await db_ops.get_media_extensions(session, rule_id)
         selected_extension_list = [ext["extension"] for ext in selected_extensions]
@@ -503,8 +499,6 @@ async def create_media_extensions_buttons(rule_id, page=0):
             Button.inline('👈 返回', f"media_settings:{rule_id}"),
             Button.inline('❌ 关闭', "close_settings")
         ])
-    finally:
-        session.close()
 
     return buttons
 
@@ -522,9 +516,7 @@ async def create_sync_rule_buttons(rule_id, page=0):
     # 设置分页参数
 
     buttons = []
-    session = get_session()
-
-    try:
+    with get_db_session() as session:
         # 获取当前规则
         current_rule = session.query(ForwardRule).get(rule_id)
         if not current_rule:
@@ -603,8 +595,5 @@ async def create_sync_rule_buttons(rule_id, page=0):
             Button.inline('👈 返回', f"rule_settings:{rule_id}"),
             Button.inline('❌ 关闭', 'close_settings')
         ])
-
-    finally:
-        session.close()
 
     return buttons

@@ -1,10 +1,4 @@
 import logging
-import os
-import pytz
-import asyncio
-from utils.constants import TEMP_DIR
-from utils.media import get_max_media_size
-
 from filters.base_filter import BaseFilter
 
 logger = logging.getLogger(__name__)

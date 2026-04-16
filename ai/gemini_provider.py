@@ -1,12 +1,9 @@
 from typing import Optional, List, Dict
 import google.generativeai as genai
-# 移除对不存在的模块的导入
-# from google.genai import types
 from .base import BaseAIProvider
 from .openai_base_provider import OpenAIBaseProvider
 import os
 import logging
-import base64
 
 logger = logging.getLogger(__name__)
 

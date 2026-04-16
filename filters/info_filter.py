@@ -1,8 +1,6 @@
 import logging
 import os
 import pytz
-import re
-from datetime import datetime
 from filters.base_filter import BaseFilter
 
 logger = logging.getLogger(__name__)

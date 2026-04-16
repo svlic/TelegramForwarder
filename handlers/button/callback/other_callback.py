@@ -9,7 +9,7 @@ from models.models import ForwardRule, MediaTypes, MediaExtensions, RuleSync, Ke
 from enums.enums import AddMode
 import logging
 from utils.common import get_media_settings_text, get_db_ops
-from models.models import get_session
+from models.models import get_db_session
 from models.db_operations import DBOperations
 from handlers.button.button_helpers import create_other_settings_buttons
 from telethon import Button
@@ -67,9 +67,7 @@ async def create_copy_rule_buttons(rule_id, page=0):
     # 设置分页参数
 
     buttons = []
-    session = get_session()
-
-    try:
+    with get_db_session() as session:
         # 获取当前规则
         if ':' in str(rule_id):
             parts = str(rule_id).split(':')
@@ -144,9 +142,6 @@ async def create_copy_rule_buttons(rule_id, page=0):
             Button.inline('👈 返回', f"other_settings:{source_rule_id}"),
             Button.inline('❌ 关闭', 'close_settings')
         ])
-
-    finally:
-        session.close()
 
     return buttons
 
@@ -574,9 +569,7 @@ async def create_rule_selection_buttons(rule_id, page=0, callback_action="perfor
     # 设置分页参数
 
     buttons = []
-    session = get_session()
-
-    try:
+    with get_db_session() as session:
         # 获取当前规则
         if ':' in str(rule_id):
             parts = str(rule_id).split(':')
@@ -653,9 +646,6 @@ async def create_rule_selection_buttons(rule_id, page=0, callback_action="perfor
             Button.inline('👈 返回', f"other_settings:{source_rule_id}"),
             Button.inline('❌ 关闭', 'close_settings')
         ])
-
-    finally:
-        session.close()
 
     return buttons
 
@@ -1146,7 +1136,7 @@ async def callback_set_userinfo_template(event, rule_id, session, message, data)
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
     try:
-        state_manager.set_state(user_id, chat_id, state, message, state_type="userinfo")
+        await state_manager.set_state(user_id, chat_id, state, message, state_type="userinfo")
         # 启动超时取消任务
         asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
         logger.info("状态设置成功")
@@ -1202,7 +1192,7 @@ async def callback_set_time_template(event, rule_id, session, message, data):
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
     try:
-        state_manager.set_state(user_id, chat_id, state, message, state_type="time")
+        await state_manager.set_state(user_id, chat_id, state, message, state_type="time")
         # 启动超时取消任务
         asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
         logger.info("状态设置成功")
@@ -1236,39 +1226,32 @@ async def callback_set_time_template(event, rule_id, session, message, data):
 async def cancel_state_after_timeout(user_id: int, chat_id: int, timeout_minutes: int = 5):
     """在指定时间后自动取消状态"""
     await asyncio.sleep(timeout_minutes * 60)
-    current_state, _, _ = state_manager.get_state(user_id, chat_id)
-    if current_state:  # 只有当状态还存在时才清除
+    current_state, _, _ = await state_manager.get_state(user_id, chat_id)
+    if current_state:
         logger.info(f"状态超时自动取消 - user_id: {user_id}, chat_id: {chat_id}")
-        state_manager.clear_state(user_id, chat_id)
+        await state_manager.clear_state(user_id, chat_id)
 
 async def callback_cancel_set_userinfo(event, rule_id, session, message, data):
     """取消设置用户信息模板"""
     rule_id = data.split(':')[1]
-    try:
+    with get_db_session() as session:
         rule = session.query(ForwardRule).get(int(rule_id))
         if rule:
-            # 清除状态
-            state_manager.clear_state(event.sender_id, abs(event.chat_id))
+            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
             # 返回到其他设置页面
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
             await event.answer("已取消设置")
-    finally:
-        session.close()
     return
 
 async def callback_cancel_set_time(event, rule_id, session, message, data):
     """取消设置时间模板"""
     rule_id = data.split(':')[1]
-    try:
+    with get_db_session() as session:
         rule = session.query(ForwardRule).get(int(rule_id))
         if rule:
-            # 清除状态
-            state_manager.clear_state(event.sender_id, abs(event.chat_id))
-            # 返回到其他设置页面
+            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
             await event.answer("已取消设置")
-    finally:
-        session.close()
     return
 
 async def callback_set_original_link_template(event, rule_id, session, message, data):
@@ -1295,7 +1278,7 @@ async def callback_set_original_link_template(event, rule_id, session, message, 
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
     try:
-        state_manager.set_state(user_id, chat_id, state, message, state_type="link")
+        await state_manager.set_state(user_id, chat_id, state, message, state_type="link")
         # 启动超时取消任务
         asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
         logger.info("状态设置成功")
@@ -1329,16 +1312,12 @@ async def callback_set_original_link_template(event, rule_id, session, message, 
 async def callback_cancel_set_original_link(event, rule_id, session, message, data):
     """取消设置原始链接模板"""
     rule_id = data.split(':')[1]
-    try:
+    with get_db_session() as session:
         rule = session.query(ForwardRule).get(int(rule_id))
         if rule:
-            # 清除状态
-            state_manager.clear_state(event.sender_id, abs(event.chat_id))
-            # 返回到其他设置页面
+            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
             await event.answer("已取消设置")
-    finally:
-        session.close()
     return
 
 async def callback_toggle_reverse_blacklist(event, rule_id, session, message, data):

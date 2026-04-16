@@ -1,5 +1,6 @@
 import logging
 import os
+import asyncio
 from filters.base_filter import BaseFilter
 from enums.enums import PreviewMode
 from telethon.errors import FloodWaitError
@@ -83,9 +84,26 @@ class SenderFilter(BaseFilter):
             return True
         except FloodWaitError as e:
             wait_time = e.seconds
-            logger.error(f'发送消息频率限制，需要等待 {wait_time} 秒')
-            context.errors.append(f"发送消息频率限制，需要等待 {wait_time} 秒")
-            return False
+            max_wait = 300
+            if wait_time > max_wait:
+                logger.error(f'发送消息频率限制等待时间过长({wait_time}秒)，放弃重试')
+                context.errors.append(f"发送消息频率限制，需等待 {wait_time} 秒，已放弃")
+                return False
+            logger.warning(f'发送消息频率限制，等待 {wait_time} 秒后重试')
+            await asyncio.sleep(wait_time)
+            try:
+                if context.is_media_group or (context.media_group_messages and context.skipped_media):
+                    await self._send_media_group(context, target_chat_id, parse_mode)
+                elif context.media_files or context.skipped_media:
+                    await self._send_single_media(context, target_chat_id, parse_mode)
+                else:
+                    await self._send_text_message(context, target_chat_id, parse_mode)
+                logger.info(f'FloodWait重试成功，消息已发送到: {target_chat_id}')
+                return True
+            except Exception as retry_error:
+                logger.error(f'FloodWait重试失败: {str(retry_error)}')
+                context.errors.append(f"重试发送失败: {str(retry_error)}")
+                return False
         except Exception as e:
             logger.error(f'发送消息时出错: {str(e)}')
             context.errors.append(f"发送消息错误: {str(e)}")

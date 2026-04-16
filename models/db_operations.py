@@ -1,5 +1,5 @@
 from sqlalchemy.exc import IntegrityError
-from models.models import Keyword, ReplaceRule, ForwardRule, MediaTypes, MediaExtensions, RuleSync
+from models.models import Keyword, ReplaceRule, ForwardRule, MediaTypes, MediaExtensions, RuleSync, get_db_session
 from sqlalchemy.orm import joinedload
 import logging
 import os
@@ -8,7 +8,6 @@ import time
 from pathlib import Path
 from dotenv import load_dotenv
 from ufb.ufb_client import UFBClient
-from models.models import get_session
 from sqlalchemy import text
 from enums.enums import ForwardMode, PreviewMode, MessageMode, AddMode, HandleMode
 
@@ -154,8 +153,7 @@ class DBOperations:
             config: 收到的配置数据
         """
         logger.info(f"从JSON同步关键字到数据库")
-        session = get_session()
-        try:
+        with get_db_session() as session:
             # 获取所有启用了UFB的规则
             ufb_rules = session.query(ForwardRule).filter(
                 ForwardRule.is_ufb == True,
@@ -219,9 +217,7 @@ class DBOperations:
 
                         session.commit()
                         logger.info(f"已从JSON同步关键字到规则 {rule.id} (domain: {rule.ufb_domain})")
-                        break  # 找到匹配的domain后跳出内层循环
-        finally:
-            session.close()
+                        break
 
     async def add_keywords(self, session, rule_id, keywords, is_regex=False, is_blacklist=False):
         """添加关键字到规则

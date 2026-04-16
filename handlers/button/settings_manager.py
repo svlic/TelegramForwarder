@@ -1,7 +1,7 @@
 import os
 from utils.settings import load_ai_models
 from enums.enums import ForwardMode, MessageMode, PreviewMode, AddMode, HandleMode
-from models.models import get_session
+from models.models import get_db_session
 from telethon import Button
 from utils.constants import UFB_ENABLED
 
@@ -421,8 +421,7 @@ async def create_buttons(rule):
     buttons = []
 
     # 获取当前聊天的当前选中规则
-    session = get_session()
-    try:
+    with get_db_session() as session:
         target_chat = rule.target_chat
         current_add_id = target_chat.current_add_id
         source_chat = rule.source_chat
@@ -570,10 +569,6 @@ async def create_buttons(rule):
                 "close_settings"
             )
         ])
-
-
-    finally:
-        session.close()
 
     return buttons
 

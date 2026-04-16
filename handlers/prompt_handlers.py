@@ -1,5 +1,5 @@
 import logging
-from models.models import get_session, ForwardRule, RuleSync
+from models.models import get_db_session, ForwardRule, RuleSync
 from managers.state_manager import state_manager
 from utils.common import get_ai_settings_text
 from handlers import bot_handler
@@ -55,8 +55,7 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
         return False
 
     logger.info(f"处理设置{prompt_type}提示词/模板,规则ID:{rule_id},字段名:{field_name}")
-    session = get_session()
-    try:
+    with get_db_session() as session:
         logger.info(f"查询规则ID:{rule_id}")
         rule = session.query(ForwardRule).get(int(rule_id))
         if rule:
@@ -103,7 +102,7 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
                 logger.info("所有同步提示词/模板更改已提交")
             
             logger.info(f"清除用户状态,用户ID:{sender_id},聊天ID:{chat_id}")
-            state_manager.clear_state(sender_id, chat_id)
+            await state_manager.clear_state(sender_id, chat_id)
             
             
             message_chat_id = event.message.chat_id
@@ -139,10 +138,4 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
             return True
         else:
             logger.warning(f"未找到规则ID:{rule_id}")
-    except Exception as e:
-        logger.error(f"处理提示词/模板设置时发生错误:{str(e)}")
-        raise
-    finally:
-        session.close()
-        logger.info("数据库会话已关闭")
     return True

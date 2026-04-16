@@ -377,6 +377,26 @@ def get_session():
     Session = sessionmaker(bind=engine)
     return Session()
 
+from contextlib import contextmanager
+
+@contextmanager
+def get_db_session():
+    """数据库会话上下文管理器，自动处理会话关闭
+    
+    使用方式:
+        with get_db_session() as session:
+            rule = session.query(ForwardRule).get(rule_id)
+            session.commit()
+    """
+    session = get_session()
+    try:
+        yield session
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     engine = init_db()

@@ -1,7 +1,7 @@
 from handlers.button.button_helpers import create_delay_time_buttons
 from handlers.list_handlers import show_list
 from handlers.button.settings_manager import create_settings_text, create_buttons, RULE_SETTINGS, MEDIA_SETTINGS, AI_SETTINGS
-from models.models import Chat, ReplaceRule, Keyword,get_session, ForwardRule, RuleSync
+from models.models import Chat, ReplaceRule, Keyword,get_db_session, ForwardRule, RuleSync
 from telethon import Button
 from handlers.button.callback.ai_callback import *
 from handlers.button.callback.media_callback import *
@@ -287,8 +287,6 @@ async def callback_select_delay_time(event, rule_id, session, message, data):
         except Exception as e:
             logger.error(f"设置延迟时间时出错: {str(e)}")
             logger.error(f"错误详情: {traceback.format_exc()}")
-        finally:
-            session.close()
     return
 
 async def callback_set_sync_rule(event, rule_id, session, message, data):
@@ -563,8 +561,7 @@ async def handle_callback(event):
         message = await event.get_message()
 
         # 使用会话
-        session = get_session()
-        try:  
+        with get_db_session() as session:
             # 获取对应的处理器
             handler = CALLBACK_HANDLERS.get(action)
             if handler:
@@ -572,7 +569,7 @@ async def handle_callback(event):
                 await handler(event, rule_id, session, message, data)
             else:
                 logger.info(f'未找到对应的处理器,尝试处理规则设置切换: {action}')
-                
+
                 # 尝试在RULE_SETTINGS中查找
                 for field_name, config in RULE_SETTINGS.items():
                     if action == config['toggle_action']:
@@ -593,8 +590,6 @@ async def handle_callback(event):
                         success = await update_rule_setting(event, rule_id, session, message, field_name, config, 'ai')
                         if success:
                             return
-        finally:
-            session.close()
 
     except Exception as e:
         logger.error(f'处理按钮回调时出错: {str(e)}')

@@ -1,5 +1,5 @@
 from telethon import events
-from models.models import get_session, Chat, ForwardRule
+from models.models import get_db_session, Chat, ForwardRule
 import logging
 from handlers import bot_handler
 from handlers.prompt_handlers import handle_prompt_setting
@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 # 添加一个缓存来存储已处理的媒体组
 PROCESSED_GROUPS = set()
+# 保护 PROCESSED_GROUPS 的锁，防止竞态条件
+_PROCESSED_GROUPS_LOCK = asyncio.Lock()
 
 BOT_ID = None
 
@@ -82,7 +84,7 @@ async def handle_user_message(event, bot_client):
         sender_id = event.sender_id
 
     # 检查用户状态
-    current_state, message, state_type = state_manager.get_state(sender_id, chat_id)
+    current_state, message, state_type = await state_manager.get_state(sender_id, chat_id)
     
     if current_state:
         # 处理提示词设置
@@ -91,17 +93,15 @@ async def handle_user_message(event, bot_client):
 
     # 检查是否是媒体组消息
     if event.message.grouped_id:
-        # 如果这个媒体组已经处理过，就跳过
         group_key = f"{chat_id}:{event.message.grouped_id}"
-        if group_key in PROCESSED_GROUPS:
-            return
-        # 标记这个媒体组为已处理
-        PROCESSED_GROUPS.add(group_key)
+        async with _PROCESSED_GROUPS_LOCK:
+            if group_key in PROCESSED_GROUPS:
+                return
+            PROCESSED_GROUPS.add(group_key)
         asyncio.create_task(clear_group_cache(group_key))
     
     # 首先检查数据库中是否有该聊天的转发规则
-    session = get_session()
-    try:
+    with get_db_session() as session:
         # 查询源聊天
         source_chat = session.query(Chat).filter(
             Chat.telegram_chat_id == str(chat_id)
@@ -140,12 +140,6 @@ async def handle_user_message(event, bot_client):
             logger.info(f'处理转发规则 ID: {rule.id} (从 {source_chat.name} 转发到: {target_chat.name})')
             # 使用过滤器链处理并转发消息
             await process_forward_rule(bot_client, event, str(chat_id), rule)
-        
-    except Exception as e:
-        logger.error(f'处理用户消息时发生错误: {str(e)}')
-        logger.exception(e)
-    finally:
-        session.close()
 
 async def handle_bot_message(event, bot_client):
     """处理机器人客户端收到的消息（命令）"""
@@ -162,7 +156,7 @@ async def handle_bot_message(event, bot_client):
             sender_id = event.sender_id
 
         # 检查用户状态
-        current_state, message, state_type = state_manager.get_state(sender_id, chat_id)
+        current_state, message, state_type = await state_manager.get_state(sender_id, chat_id)
 
         # 处理提示词设置
         if current_state:
@@ -175,7 +169,8 @@ async def handle_bot_message(event, bot_client):
         logger.error(f'处理机器人命令时发生错误: {str(e)}')
         logger.exception(e)
 
-async def clear_group_cache(group_key, delay=300):  # 5分钟后清除缓存
+async def clear_group_cache(group_key, delay=300):
     """清除已处理的媒体组记录"""
     await asyncio.sleep(delay)
-    PROCESSED_GROUPS.discard(group_key)
+    async with _PROCESSED_GROUPS_LOCK:
+        PROCESSED_GROUPS.discard(group_key)

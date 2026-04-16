@@ -51,12 +51,6 @@ os.makedirs('./sessions', exist_ok=True)
 os.makedirs('./temp', exist_ok=True)
 
 
-# 清空./temp文件夹
-def clear_temp_dir():
-    for file in os.listdir('./temp'):
-        os.remove(os.path.join('./temp', file))
-
-
 # 创建客户端
 user_client = TelegramClient('./sessions/user', api_id, api_hash)
 bot_client = TelegramClient('./sessions/bot', api_id, api_hash)
