@@ -48,7 +48,7 @@ class ForwardRule(Base):
     enable_comment_button = Column(Boolean, default=False)  # 是否添加对应消息的评论区直达按钮
     enable_media_type_filter = Column(Boolean, default=False)  # 是否启用媒体类型过滤
     enable_media_size_filter = Column(Boolean, default=False)  # 是否启用媒体大小过滤
-    max_media_size = Column(Integer, default=os.getenv('DEFAULT_MAX_MEDIA_SIZE', 10))  # 媒体大小限制，单位MB
+    max_media_size = Column(Integer, default=DEFAULT_MAX_MEDIA_SIZE)  # 媒体大小限制，单位MB
     is_send_over_media_size_message = Column(Boolean, default=True)  # 超过限制的媒体是否发送提示消息
     enable_extension_filter = Column(Boolean, default=False)  # 是否启用媒体扩展名过滤
     extension_filter_mode = Column(Enum(AddMode), nullable=False, default=AddMode.BLACKLIST)  # 媒体扩展名过滤模式，默认黑名单
@@ -61,7 +61,7 @@ class ForwardRule(Base):
     ai_prompt = Column(String, nullable=True)  # AI处理的prompt
     enable_ai_upload_image = Column(Boolean, default=False)  # 是否启用AI图片上传功能
     is_summary = Column(Boolean, default=False)  # 是否启用AI总结
-    summary_time = Column(String(5), default=os.getenv('DEFAULT_SUMMARY_TIME', '07:00'))
+    summary_time = Column(String(5), default=DEFAULT_SUMMARY_TIME)
     summary_prompt = Column(String, nullable=True)  # AI总结的prompt
     is_keyword_after_ai = Column(Boolean, default=False) # AI处理后是否再次执行关键字过滤
     is_top_summary = Column(Boolean, default=True) # 是否顶置总结消息
@@ -252,7 +252,7 @@ def migrate_db(engine):
         'enable_comment_button': 'ALTER TABLE forward_rules ADD COLUMN enable_comment_button BOOLEAN DEFAULT FALSE',
         'enable_media_type_filter': 'ALTER TABLE forward_rules ADD COLUMN enable_media_type_filter BOOLEAN DEFAULT FALSE',
         'enable_media_size_filter': 'ALTER TABLE forward_rules ADD COLUMN enable_media_size_filter BOOLEAN DEFAULT FALSE',
-        'max_media_size': f'ALTER TABLE forward_rules ADD COLUMN max_media_size INTEGER DEFAULT {os.getenv("DEFAULT_MAX_MEDIA_SIZE", 10)}',
+            'max_media_size': f'ALTER TABLE forward_rules ADD COLUMN max_media_size INTEGER DEFAULT {DEFAULT_MAX_MEDIA_SIZE}',
         'is_send_over_media_size_message': 'ALTER TABLE forward_rules ADD COLUMN is_send_over_media_size_message BOOLEAN DEFAULT TRUE',
         'enable_extension_filter': 'ALTER TABLE forward_rules ADD COLUMN enable_extension_filter BOOLEAN DEFAULT FALSE',
         'extension_filter_mode': 'ALTER TABLE forward_rules ADD COLUMN extension_filter_mode VARCHAR DEFAULT "BLACKLIST"',
@@ -358,10 +358,8 @@ def migrate_db(engine):
 
 
 def init_db():
-    """初始化数据库"""
-    # 创建数据库文件夹
     os.makedirs('./db', exist_ok=True)
-    engine = create_engine('sqlite:///./db/forward.db')
+    engine = create_engine(DATABASE_URL)
 
     # 首先创建所有表
     Base.metadata.create_all(engine)
