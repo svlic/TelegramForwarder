@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 async def callback_ai_settings(event, rule_id, session, message, data):
-    rule = session.query(ForwardRule).get(int(rule_id))
+    rule = session.get(ForwardRule, int(rule_id))
     if rule:
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
     return
@@ -32,7 +32,7 @@ async def callback_set_summary_prompt(event, rule_id, session, message, data):
     """处理设置AI总结提示词的回调"""
     logger.info(f"开始处理设置AI总结提示词回调 - event: {event}, rule_id: {rule_id}")
     
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -76,7 +76,7 @@ async def callback_set_summary_prompt(event, rule_id, session, message, data):
 async def callback_set_ai_prompt(event, rule_id, session, message, data):
     logger.info(f"开始处理设置AI提示词回调 - event: {event}, rule_id: {rule_id}")
 
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -138,7 +138,7 @@ async def callback_select_time(event, rule_id, session, message, data):
         _, rule_id, time = parts
         logger.info(f"设置规则 {rule_id} 的总结时间为: {time}")
         try:
-            rule = session.query(ForwardRule).get(int(rule_id))
+            rule = session.get(ForwardRule, int(rule_id))
             if rule:
                 # 记录旧时间
                 old_time = rule.summary_time
@@ -160,7 +160,7 @@ async def callback_select_time(event, rule_id, session, message, data):
                         logger.info(f"正在同步总结时间到规则 {sync_rule_id}")
                         
                         # 获取同步目标规则
-                        target_rule = session.query(ForwardRule).get(sync_rule_id)
+                        target_rule = session.get(ForwardRule, sync_rule_id)
                         if not target_rule:
                             logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                             continue
@@ -218,7 +218,7 @@ async def callback_select_model(event, rule_id, session, message, data):
     _, rule_id_part, model = parts
     
     try:
-        rule = session.query(ForwardRule).get(int(rule_id_part))
+        rule = session.get(ForwardRule, int(rule_id_part))
         if rule:
             # 记录旧模型
             old_model = rule.ai_model
@@ -240,7 +240,7 @@ async def callback_select_model(event, rule_id, session, message, data):
                     logger.info(f"正在同步AI模型到规则 {sync_rule_id}")
                     
                     # 获取同步目标规则
-                    target_rule = session.query(ForwardRule).get(sync_rule_id)
+                    target_rule = session.get(ForwardRule, sync_rule_id)
                     if not target_rule:
                         logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                         continue
@@ -271,7 +271,7 @@ async def callback_select_model(event, rule_id, session, message, data):
 async def callback_set_ai_model(event, rule_id, session, message, data):
     logger.info(f"开始处理设置AI模型回调 - rule_id: {rule_id}")
     
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -286,7 +286,7 @@ async def callback_set_ai_model(event, rule_id, session, message, data):
 
 async def callback_cancel_set_model(event, rule_id, session, message, data):
     rule_id = data.split(':')[1]
-    rule = session.query(ForwardRule).get(int(rule_id))
+    rule = session.get(ForwardRule, int(rule_id))
     if rule:
         await state_manager.clear_state(event.sender_id, abs(event.chat_id))
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
@@ -297,7 +297,7 @@ async def callback_cancel_set_model(event, rule_id, session, message, data):
 
 async def callback_cancel_set_prompt(event, rule_id, session, message, data):
     rule_id = data.split(':')[1]
-    rule = session.query(ForwardRule).get(int(rule_id))
+    rule = session.get(ForwardRule, int(rule_id))
     if rule:
         await state_manager.clear_state(event.sender_id, abs(event.chat_id))
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
@@ -309,7 +309,7 @@ async def callback_cancel_set_prompt(event, rule_id, session, message, data):
 
 async def callback_cancel_set_summary(event, rule_id, session, message, data):
     rule_id = data.split(':')[1]
-    rule = session.query(ForwardRule).get(int(rule_id))
+    rule = session.get(ForwardRule, int(rule_id))
     if rule:
         await state_manager.clear_state(event.sender_id, abs(event.chat_id))
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
@@ -321,7 +321,7 @@ async def callback_summary_now(event, rule_id, session, message, data):
     logger.info(f"处理立即执行总结回调 - rule_id: {rule_id}")
     
     try:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if not rule:
             await event.answer("规则不存在")
             return

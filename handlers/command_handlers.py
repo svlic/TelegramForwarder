@@ -191,7 +191,7 @@ async def handle_settings_command(event, command, parts):
 
         # 直接打开指定规则的设置界面
         with get_db_session() as session:
-            rule = session.query(ForwardRule).get(rule_id)
+            rule = session.get(ForwardRule, rule_id)
             if not rule:
                 await reply_and_delete(event, f'找不到ID为 {rule_id} 的规则')
                 return
@@ -1151,7 +1151,7 @@ async def handle_copy_keywords_command(event, command):
         target_rule, source_chat = rule_info
 
         # 获取源规则
-        source_rule = session.query(ForwardRule).get(source_rule_id)
+        source_rule = session.get(ForwardRule, source_rule_id)
         if not source_rule:
             await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
             await reply_and_delete(event,f'找不到规则ID: {source_rule_id}')
@@ -1212,7 +1212,7 @@ async def handle_copy_keywords_regex_command(event, command):
         target_rule, source_chat = rule_info
 
         # 获取源规则
-        source_rule = session.query(ForwardRule).get(source_rule_id)
+        source_rule = session.get(ForwardRule, source_rule_id)
         if not source_rule:
             await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
             await reply_and_delete(event,f'找不到规则ID: {source_rule_id}')
@@ -1273,7 +1273,7 @@ async def handle_copy_replace_command(event, command):
         target_rule, source_chat = rule_info
 
         # 获取源规则
-        source_rule = session.query(ForwardRule).get(source_rule_id)
+        source_rule = session.get(ForwardRule, source_rule_id)
         if not source_rule:
             await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
             await reply_and_delete(event,f'找不到规则ID: {source_rule_id}')
@@ -1338,7 +1338,7 @@ async def handle_copy_rule_command(event, command):
 
     with get_db_session() as session:
         # 获取源规则
-        source_rule = session.query(ForwardRule).get(source_rule_id)
+        source_rule = session.get(ForwardRule, source_rule_id)
         if not source_rule:
             await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
             await reply_and_delete(event,f'找不到源规则ID: {source_rule_id}')
@@ -1353,7 +1353,7 @@ async def handle_copy_rule_command(event, command):
             target_rule, source_chat = rule_info
         else:
             # 使用指定的目标规则ID
-            target_rule = session.query(ForwardRule).get(target_rule_id)
+            target_rule = session.get(ForwardRule, target_rule_id)
             if not target_rule:
                 await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
                 await reply_and_delete(event,f'找不到目标规则ID: {target_rule_id}')
@@ -1904,7 +1904,7 @@ async def handle_delete_rule_command(event, command, parts):
         not_found_ids = []
 
         for rule_id in ids_to_remove:
-            rule = session.query(ForwardRule).get(rule_id)
+            rule = session.get(ForwardRule, rule_id)
             if not rule:
                 not_found_ids.append(rule_id)
                 continue

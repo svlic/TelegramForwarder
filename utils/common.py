@@ -335,7 +335,7 @@ async def check_and_clean_chats(session, rule=None):
 
             # 如果聊天不再被任何规则引用
             if as_source == 0 and as_target == 0:
-                chat = session.query(Chat).get(chat_id)
+                chat = session.get(Chat, chat_id)
                 if chat:
                     # 获取telegram_chat_id以便日志记录
                     telegram_chat_id = chat.telegram_chat_id

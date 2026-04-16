@@ -91,7 +91,7 @@ async def callback_settings(event, rule_id, session, message, data):
 
 async def callback_delete(event, rule_id, session, message, data):
     """处理删除规则的回调"""
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -202,7 +202,7 @@ async def callback_page(event, rule_id, session, message, data):
 
 async def callback_rule_settings(event, rule_id, session, message, data):
     """处理规则设置的回调"""
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -214,7 +214,7 @@ async def callback_rule_settings(event, rule_id, session, message, data):
 
 async def callback_toggle_current(event, rule_id, session, message, data):
     """处理切换当前规则的回调"""
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -266,7 +266,7 @@ async def callback_select_delay_time(event, rule_id, session, message, data):
         _, rule_id, time = parts
         logger.info(f"设置规则 {rule_id} 的延迟时间为: {time}")
         try:
-            rule = session.query(ForwardRule).get(int(rule_id))
+            rule = session.get(ForwardRule, int(rule_id))
             if rule:
                 # 记录旧时间
                 old_time = rule.delay_seconds
@@ -292,7 +292,7 @@ async def callback_select_delay_time(event, rule_id, session, message, data):
 async def callback_set_sync_rule(event, rule_id, session, message, data):
     """处理设置同步规则的回调"""
     try:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if not rule:
             await event.answer('规则不存在')
             return
@@ -360,7 +360,7 @@ async def callback_sync_rule_page(event, rule_id_data, session, message, data):
         page = int(parts[1])
         
         # 检查规则是否存在
-        rule = session.query(ForwardRule).get(rule_id)
+        rule = session.get(ForwardRule, rule_id)
         if not rule:
             await event.answer('规则不存在')
             return
@@ -470,7 +470,7 @@ async def update_rule_setting(event, rule_id, session, message, field_name, conf
         setting_type: 设置类型 ('rule', 'media', 'ai')
     """
     logger.info(f'找到匹配的设置项: {field_name}')
-    rule = session.query(ForwardRule).get(int(rule_id))
+    rule = session.get(ForwardRule, int(rule_id))
     if not rule:
         logger.warning(f'规则不存在: {rule_id}')
         await event.answer('规则不存在')
@@ -497,7 +497,7 @@ async def update_rule_setting(event, rule_id, session, message, field_name, conf
                 logger.info(f"正在同步设置 {field_name} 到规则 {sync_rule_id}")
                 
                 # 获取同步目标规则
-                target_rule = session.query(ForwardRule).get(sync_rule_id)
+                target_rule = session.get(ForwardRule, sync_rule_id)
                 if not target_rule:
                     logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                     continue

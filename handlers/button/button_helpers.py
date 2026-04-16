@@ -108,7 +108,7 @@ async def create_other_settings_buttons(rule=None,rule_id=None):
         rule_id = rule.id
     else:
         with get_db_session() as session:
-            rule = session.query(ForwardRule).get(int(rule_id))
+            rule = session.get(ForwardRule, int(rule_id))
 
     current_row = []
     for field, config in OTHER_SETTINGS.items():
@@ -488,7 +488,7 @@ async def create_sync_rule_buttons(rule_id, page=0):
     buttons = []
     with get_db_session() as session:
         # 获取当前规则
-        current_rule = session.query(ForwardRule).get(rule_id)
+        current_rule = session.get(ForwardRule, rule_id)
         if not current_rule:
             buttons.append([Button.inline('❌ 规则不存在', 'noop')])
             buttons.append([Button.inline('关闭', 'close_settings')])

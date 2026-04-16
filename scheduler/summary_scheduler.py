@@ -124,7 +124,7 @@ class SummaryScheduler:
         """执行单个规则的总结任务"""
         session = get_session()
         try:
-            rule = session.query(ForwardRule).get(rule_id)
+            rule = session.get(ForwardRule, rule_id)
             if not is_now:
                 if not rule or not rule.is_summary:
                     return

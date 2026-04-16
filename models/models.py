@@ -383,7 +383,7 @@ def get_db_session():
     
     使用方式:
         with get_db_session() as session:
-            rule = session.query(ForwardRule).get(rule_id)
+            rule = session.get(ForwardRule, rule_id)
             session.commit()
     """
     session = get_session()

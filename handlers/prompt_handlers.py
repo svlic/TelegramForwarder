@@ -63,7 +63,7 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
     logger.info(f"处理设置{prompt_type}提示词/模板,规则ID:{rule_id},字段名:{field_name}")
     with get_db_session() as session:
         logger.info(f"查询规则ID:{rule_id}")
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if rule:
             old_prompt = getattr(rule, field_name) if hasattr(rule, field_name) else None
             new_prompt = event.message.text
@@ -86,7 +86,7 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
                     logger.info(f"正在同步{prompt_type}提示词/模板到规则 {sync_rule_id}")
                     
                     # 获取同步目标规则
-                    target_rule = session.query(ForwardRule).get(sync_rule_id)
+                    target_rule = session.get(ForwardRule, sync_rule_id)
                     if not target_rule:
                         logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                         continue

@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 async def callback_media_settings(event, rule_id, session, message, data):
-    rule = session.query(ForwardRule).get(int(rule_id))
+    rule = session.get(ForwardRule, int(rule_id))
     if rule:
         await event.edit(await get_media_settings_text(), buttons=await create_media_settings_buttons(rule))
     return
@@ -32,7 +32,7 @@ async def callback_select_max_media_size(event, rule_id, session, message, data)
         if len(parts) == 3:
             _, rule_id, size = parts
             logger.info(f"设置规则 {rule_id} 的最大媒体大小为: {size}")
-            rule = session.query(ForwardRule).get(int(rule_id))
+            rule = session.get(ForwardRule, int(rule_id))
             if rule:
                 old_size = rule.max_media_size
                 rule.max_media_size = int(size)
@@ -47,7 +47,7 @@ async def callback_select_max_media_size(event, rule_id, session, message, data)
                         sync_rule_id = sync_rule.sync_rule_id
                         logger.info(f"正在同步媒体大小到规则 {sync_rule_id}")
 
-                        target_rule = session.query(ForwardRule).get(sync_rule_id)
+                        target_rule = session.get(ForwardRule, sync_rule_id)
                         if not target_rule:
                             logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                             continue
@@ -76,7 +76,7 @@ async def callback_select_max_media_size(event, rule_id, session, message, data)
 
 
 async def callback_set_media_types(event, rule_id, session, message, data):
-    rule = session.query(ForwardRule).get(int(rule_id))
+    rule = session.get(ForwardRule, int(rule_id))
     if not rule:
         await event.answer("规则不存在")
         return
@@ -106,7 +106,7 @@ async def callback_toggle_media_type(event, rule_id, session, message, data):
             await event.answer(f"无效的媒体类型: {media_type}")
             return
 
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if not rule:
             await event.answer("规则不存在")
             return
@@ -131,7 +131,7 @@ async def callback_toggle_media_type(event, rule_id, session, message, data):
                     sync_rule_id = sync_rule.sync_rule_id
                     logger.info(f"正在同步媒体类型 {media_type} 到规则 {sync_rule_id}")
 
-                    target_rule = session.query(ForwardRule).get(sync_rule_id)
+                    target_rule = session.get(ForwardRule, sync_rule_id)
                     if not target_rule:
                         logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                         continue
@@ -202,7 +202,7 @@ async def callback_toggle_media_extension(event, rule_id, session, message, data
         if len(parts) > 3 and parts[3].isdigit():
             current_page = int(parts[3])
 
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if not rule:
             await event.answer("规则不存在")
             return
@@ -228,7 +228,7 @@ async def callback_toggle_media_extension(event, rule_id, session, message, data
                             sync_rule_id = sync_rule.sync_rule_id
                             logger.info(f"正在同步移除媒体扩展名 {extension} 到规则 {sync_rule_id}")
 
-                            target_rule = session.query(ForwardRule).get(sync_rule_id)
+                            target_rule = session.get(ForwardRule, sync_rule_id)
                             if not target_rule:
                                 logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                                 continue
@@ -265,7 +265,7 @@ async def callback_toggle_media_extension(event, rule_id, session, message, data
                         sync_rule_id = sync_rule.sync_rule_id
                         logger.info(f"正在同步添加媒体扩展名 {extension} 到规则 {sync_rule_id}")
 
-                        target_rule = session.query(ForwardRule).get(sync_rule_id)
+                        target_rule = session.get(ForwardRule, sync_rule_id)
                         if not target_rule:
                             logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                             continue
@@ -295,7 +295,7 @@ async def callback_toggle_media_extension(event, rule_id, session, message, data
 
 async def callback_toggle_media_allow_text(event, rule_id, session, message, data):
     try:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if not rule:
             await event.answer("规则不存在")
             return
@@ -311,7 +311,7 @@ async def callback_toggle_media_allow_text(event, rule_id, session, message, dat
                 sync_rule_id = sync_rule.sync_rule_id
                 logger.info(f"正在同步'放行文本'设置到规则 {sync_rule_id}")
 
-                target_rule = session.query(ForwardRule).get(sync_rule_id)
+                target_rule = session.get(ForwardRule, sync_rule_id)
                 if not target_rule:
                     logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
                     continue
@@ -338,7 +338,7 @@ async def callback_toggle_media_allow_text(event, rule_id, session, message, dat
 
 async def callback_toggle_media_caption_filter(event, rule_id, session, message, data):
     try:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if not rule:
             await event.answer("规则不存在")
             return
@@ -350,7 +350,7 @@ async def callback_toggle_media_caption_filter(event, rule_id, session, message,
             sync_rules = session.query(RuleSync).filter(RuleSync.rule_id == rule.id).all()
             for sync_rule in sync_rules:
                 sync_rule_id = sync_rule.sync_rule_id
-                target_rule = session.query(ForwardRule).get(sync_rule_id)
+                target_rule = session.get(ForwardRule, sync_rule_id)
                 if target_rule:
                     target_rule.media_caption_filter = rule.media_caption_filter
                     logger.info(f"同步规则 {sync_rule_id} 的Caption过滤设置已更新")

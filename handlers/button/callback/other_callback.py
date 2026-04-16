@@ -75,7 +75,7 @@ async def create_copy_rule_buttons(rule_id, page=0):
         else:
             source_rule_id = int(rule_id)
 
-        current_rule = session.query(ForwardRule).get(source_rule_id)
+        current_rule = session.get(ForwardRule, source_rule_id)
         if not current_rule:
             buttons.append([Button.inline('❌ 规则不存在', 'noop')])
             buttons.append([Button.inline('关闭', 'close_settings')])
@@ -162,8 +162,8 @@ async def callback_perform_copy_rule(event, rule_id_data, session, message, data
         target_rule_id = int(parts[1])
 
         # 获取源规则和目标规则
-        source_rule = session.query(ForwardRule).get(source_rule_id)
-        target_rule = session.query(ForwardRule).get(target_rule_id)
+        source_rule = session.get(ForwardRule, source_rule_id)
+        target_rule = session.get(ForwardRule, target_rule_id)
 
         if not source_rule or not target_rule:
             await event.answer("源规则或目标规则不存在")
@@ -577,7 +577,7 @@ async def create_rule_selection_buttons(rule_id, page=0, callback_action="perfor
         else:
             source_rule_id = int(rule_id)
 
-        current_rule = session.query(ForwardRule).get(source_rule_id)
+        current_rule = session.get(ForwardRule, source_rule_id)
         if not current_rule:
             buttons.append([Button.inline('❌ 规则不存在', 'noop')])
             buttons.append([Button.inline('关闭', 'close_settings')])
@@ -685,8 +685,8 @@ async def get_rules(event, session, source_rule_id, target_rule_id):
     Returns:
         (source_rule, target_rule) 或 (None, None)
     """
-    source_rule = session.query(ForwardRule).get(source_rule_id)
-    target_rule = session.query(ForwardRule).get(target_rule_id)
+    source_rule = session.get(ForwardRule, source_rule_id)
+    target_rule = session.get(ForwardRule, target_rule_id)
 
     if not source_rule or not target_rule:
         await event.answer("源规则或目标规则不存在")
@@ -731,7 +731,7 @@ async def callback_clear_keyword(event, rule_id, session, message, data):
             page = int(parts[2])
 
         # 获取规则信息
-        current_rule = session.query(ForwardRule).get(int(rule_id))
+        current_rule = session.get(ForwardRule, int(rule_id))
         if not current_rule:
             await event.answer("规则不存在")
             return
@@ -784,7 +784,7 @@ async def callback_clear_replace(event, rule_id, session, message, data):
             page = int(parts[2])
 
         # 获取规则信息
-        current_rule = session.query(ForwardRule).get(int(rule_id))
+        current_rule = session.get(ForwardRule, int(rule_id))
         if not current_rule:
             await event.answer("规则不存在")
             return
@@ -841,7 +841,7 @@ async def callback_delete_rule(event, rule_id, session, message, data):
             source_rule_id = str(rule_id).split(':')[0]
 
         # 获取规则信息
-        current_rule = session.query(ForwardRule).get(int(source_rule_id))
+        current_rule = session.get(ForwardRule, int(source_rule_id))
         if not current_rule:
             await event.answer("规则不存在")
             return
@@ -902,7 +902,7 @@ async def callback_perform_clear_keyword(event, rule_id_data, session, message, 
             rule_id = int(rule_id_data)
 
         # 获取规则
-        rule = session.query(ForwardRule).get(rule_id)
+        rule = session.get(ForwardRule, rule_id)
         if not rule:
             await event.answer("规则不存在")
             return
@@ -965,7 +965,7 @@ async def callback_perform_clear_replace(event, rule_id_data, session, message, 
             rule_id = int(rule_id_data)
 
         # 获取规则
-        rule = session.query(ForwardRule).get(rule_id)
+        rule = session.get(ForwardRule, rule_id)
         if not rule:
             await event.answer("规则不存在")
             return
@@ -1032,7 +1032,7 @@ async def callback_perform_delete_rule(event, rule_id_data, session, message, da
             rule_id = int(rule_id_data)
 
         # 获取规则
-        rule = session.query(ForwardRule).get(rule_id)
+        rule = session.get(ForwardRule, rule_id)
         if not rule:
             await event.answer("规则不存在")
             return
@@ -1116,7 +1116,7 @@ async def callback_set_userinfo_template(event, rule_id, session, message, data)
     """设置用户信息模板"""
     logger.info(f"开始处理设置用户信息模板回调 - event: {event}, rule_id: {rule_id}")
 
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -1172,7 +1172,7 @@ async def callback_set_time_template(event, rule_id, session, message, data):
     """设置时间模板"""
     logger.info(f"开始处理设置时间模板回调 - event: {event}, rule_id: {rule_id}")
 
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -1235,7 +1235,7 @@ async def callback_cancel_set_userinfo(event, rule_id, session, message, data):
     """取消设置用户信息模板"""
     rule_id = data.split(':')[1]
     with get_db_session() as session:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if rule:
             await state_manager.clear_state(event.sender_id, abs(event.chat_id))
             # 返回到其他设置页面
@@ -1247,7 +1247,7 @@ async def callback_cancel_set_time(event, rule_id, session, message, data):
     """取消设置时间模板"""
     rule_id = data.split(':')[1]
     with get_db_session() as session:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if rule:
             await state_manager.clear_state(event.sender_id, abs(event.chat_id))
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
@@ -1258,7 +1258,7 @@ async def callback_set_original_link_template(event, rule_id, session, message, 
     """设置原始链接模板"""
     logger.info(f"开始处理设置原始链接模板回调 - event: {event}, rule_id: {rule_id}")
 
-    rule = session.query(ForwardRule).get(rule_id)
+    rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
@@ -1313,7 +1313,7 @@ async def callback_cancel_set_original_link(event, rule_id, session, message, da
     """取消设置原始链接模板"""
     rule_id = data.split(':')[1]
     with get_db_session() as session:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if rule:
             await state_manager.clear_state(event.sender_id, abs(event.chat_id))
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
@@ -1323,7 +1323,7 @@ async def callback_cancel_set_original_link(event, rule_id, session, message, da
 async def callback_toggle_reverse_blacklist(event, rule_id, session, message, data):
     """切换反转黑名单设置"""
     try:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if rule:
             rule.enable_reverse_blacklist = not rule.enable_reverse_blacklist
             session.commit()
@@ -1340,7 +1340,7 @@ async def callback_toggle_reverse_blacklist(event, rule_id, session, message, da
 async def callback_toggle_reverse_whitelist(event, rule_id, session, message, data):
     """切换反转白名单设置"""
     try:
-        rule = session.query(ForwardRule).get(int(rule_id))
+        rule = session.get(ForwardRule, int(rule_id))
         if rule:
             rule.enable_reverse_whitelist = not rule.enable_reverse_whitelist
             session.commit()
