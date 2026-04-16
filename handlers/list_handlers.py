@@ -24,19 +24,22 @@ async def show_list(event, command, items, formatter, title, page=1):
     item_list = []
     for i, item in enumerate(current_items):
         formatted_item = formatter(i + start + 1, item)
-        # 如果是关键字列表，给关键字添加反引号
         if command == 'keyword':
-            # 分割序号和关键字内容
             parts = formatted_item.split('. ', 1)
             if len(parts) == 2:
                 number = parts[0]
                 content = parts[1]
-                # 如果是正则表达式，在关键字部分添加反引号
+                blacklist_label = ""
+                if '[' in content and ']' in content:
+                    label_start = content.rfind('[')
+                    label_end = content.rfind(']') + 1
+                    blacklist_label = content[label_start:label_end]
+                    content = content[:label_start].strip()
                 if ' (正则)' in content:
-                    keyword, regex_mark = content.split(' (正则)')
-                    formatted_item = f'{number}. `{keyword}` (正则)'
+                    keyword, _ = content.split(' (正则)')
+                    formatted_item = f'{number}. `{keyword}` (正则){blacklist_label}'
                 else:
-                    formatted_item = f'{number}. `{content}`'
+                    formatted_item = f'{number}. `{content}`{blacklist_label}'
         item_list.append(formatted_item)
 
     # 创建分页按钮

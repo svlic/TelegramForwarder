@@ -49,7 +49,7 @@ async def handle_bind_command(event, client, parts):
 
     # 默认使用当前聊天作为目标聊天
     current_chat = await event.get_chat()
-    
+
     try:
         # 获取 main 模块中的用户客户端
         main = await get_main_module()
@@ -73,7 +73,7 @@ async def handle_bind_command(event, client, parts):
                     await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
                     await reply_and_delete(event,'未找到匹配的源群组/频道，请确保名称正确且账号已加入该群组/频道')
                     return
-            
+
             # 获取目标聊天实体
             if target_chat_input:
                 is_target_link = target_chat_input.startswith(('https://', 't.me/'))
@@ -150,12 +150,12 @@ async def handle_bind_command(event, client, parts):
                 source_chat_id=source_chat_db.id,
                 target_chat_id=target_chat_db.id
             )
-            
+
             # 如果是绑定自己，则默认使用白名单模式
             if str(source_chat_entity.id) == str(target_chat_entity.id):
                 rule.forward_mode = ForwardMode.WHITELIST
                 rule.add_mode = AddMode.WHITELIST
-                
+
             session.add(rule)
             session.commit()
 
@@ -191,14 +191,14 @@ async def handle_settings_command(event, command, parts):
     """处理 settings 命令"""
     # 添加日志
     logger.info(f'处理 settings 命令 - parts: {parts}')
-    
+
     # 获取参数
     args = parts[1:] if len(parts) > 1 else []
-    
+
     # 检查是否提供了规则ID
     if len(args) >= 1 and args[0].isdigit():
         rule_id = int(args[0])
-        
+
         # 直接打开指定规则的设置界面
         session = get_session()
         try:
@@ -206,20 +206,20 @@ async def handle_settings_command(event, command, parts):
             if not rule:
                 await reply_and_delete(event, f'找不到ID为 {rule_id} 的规则')
                 return
-                
+
             # 与callback_rule_settings函数相同的处理方式
             settings_message = await event.respond(
                 await create_settings_text(rule),
                 buttons=await create_buttons(rule)
             )
-            
+
         except Exception as e:
             logger.error(f'打开规则设置时出错: {str(e)}')
             await reply_and_delete(event, '打开规则设置时出错，请检查日志')
         finally:
             session.close()
         return
-    
+
     current_chat = await event.get_chat()
     current_chat_id = str(current_chat.id)
     # 添加日志
@@ -268,7 +268,7 @@ async def handle_settings_command(event, command, parts):
             button_text = f'{source_chat.name}'
             callback_data = f"rule_settings:{rule.id}"
             buttons.append([Button.inline(button_text, callback_data)])
-        
+
         # 删除用户消息
         client = await get_bot_client()
         await async_delete_user_message(client, event.message.chat_id, event.message.id, 0)
@@ -419,24 +419,24 @@ async def handle_replace_command(event, parts):
     try:
         # 去掉命令前缀，获取原始参数字符串
         _, args_text = message_text.split(None, 1)
-        
+
         # 按第一个空格分割，保持后续内容不变
         parts = args_text.split(None, 1)
         if not parts:
             await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
             await reply_and_delete(event,'请提供有效的匹配规则')
             return
-            
+
         pattern = parts[0]
         content = parts[1] if len(parts) > 1 else ''
-        
+
         logger.info(f"解析替换命令参数: pattern='{pattern}', content='{content}'")
-        
+
     except ValueError as e:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
         await reply_and_delete(event,f'参数解析错误: {str(e)}\n请确保引号成对出现')
         return
-        
+
     if not pattern:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
         await reply_and_delete(event,'请提供有效的匹配规则')
@@ -501,17 +501,15 @@ async def handle_list_keyword_command(event):
 
         rule, source_chat = rule_info
 
-        # 使用 get_keywords 获取所有关键字
         db_ops = await get_db_ops()
-        rule_mode = "blacklist" if rule.add_mode == AddMode.BLACKLIST else "whitelist"
-        keywords = await db_ops.get_keywords(session, rule.id, rule_mode)
+        keywords = await db_ops.get_keywords_all(session, rule.id)
 
         await show_list(
             event,
             'keyword',
             keywords,
-            lambda i, kw: f'{i}. {kw.keyword}{" (正则)" if kw.is_regex else ""}',
-            f'关键字列表\n当前模式: {"黑名单" if rule.add_mode == AddMode.BLACKLIST else "白名单"}\n规则: 来自 {source_chat.name}'
+            lambda i, kw: f'{i}. {kw.keyword}{" (正则)" if kw.is_regex else ""} [{"黑名单" if kw.is_blacklist else "白名单"}]',
+            f'关键字列表\n规则: 来自 {source_chat.name}'
         )
 
     finally:
@@ -625,7 +623,7 @@ async def handle_remove_command(event, command, parts):
             # 修改：删除匹配的关键字
             removed_count = 0
             removed_indices = [] # 存储要删除的关键字索引
-            
+
             for keyword in keywords_to_remove:
                 logger.info(f"尝试删除关键字: {keyword}")
                 for i, item in enumerate(items):
@@ -634,13 +632,13 @@ async def handle_remove_command(event, command, parts):
                         removed_indices.append(i + 1) # 转为1-based索引
                         removed_count += 1
                         break
-            
+
             if removed_indices:
                 # 使用db_ops删除关键字（支持同步功能）
                 await db_ops.delete_keywords(session, rule.id, removed_indices)
                 session.commit()
                 logger.info(f"成功删除 {removed_count} 个关键字")
-            
+
             # 重新获取更新后的列表
             remaining_items = await db_ops.get_keywords(session, rule.id, rule_mode)
 
@@ -673,10 +671,10 @@ async def handle_remove_command(event, command, parts):
             removed_count = 0
             removed_keywords = []
             valid_ids = [id for id in ids_to_remove if 1 <= id <= max_id]
-            
+
             for id in valid_ids:
                 removed_keywords.append(items[id - 1].keyword)
-                
+
             # 使用db_ops删除关键字（支持同步功能）
             removed_count, _ = await db_ops.delete_keywords(session, rule.id, valid_ids)
             session.commit()
@@ -771,7 +769,7 @@ async def handle_start_command(event):
 
     welcome_text = f"""
     👋 欢迎使用 Telegram 消息转发机器人！
-    
+
     📱 当前版本：v{VERSION}
 
     📖 查看完整命令列表请使用 /help
@@ -1485,7 +1483,7 @@ async def handle_copy_replace_command(event, command):
 async def handle_copy_rule_command(event, command):
     """处理复制规则命令 - 复制一个规则的所有设置到当前规则或指定规则"""
     parts = event.message.text.split()
-    
+
     # 检查参数数量
     if len(parts) not in [2, 3]:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
@@ -1494,7 +1492,7 @@ async def handle_copy_rule_command(event, command):
 
     try:
         source_rule_id = int(parts[1])
-        
+
         # 确定目标规则ID
         if len(parts) == 3:
             # 如果提供了两个参数，使用第二个参数作为目标规则ID
@@ -1644,7 +1642,7 @@ async def handle_copy_rule_command(event, command):
         # 复制规则同步表数据
         rule_syncs_success = 0
         rule_syncs_skip = 0
-        
+
         # 检查源规则是否有同步关系
         if hasattr(source_rule, 'rule_syncs') and source_rule.rule_syncs:
             for sync in source_rule.rule_syncs:
@@ -1659,7 +1657,7 @@ async def handle_copy_rule_command(event, command):
                         )
                         session.add(new_sync)
                         rule_syncs_success += 1
-                        
+
                         # 启用目标规则的同步功能
                         if rule_syncs_success > 0:
                             target_rule.enable_sync = True
@@ -1955,7 +1953,7 @@ async def handle_add_all_command(event, command, parts):
 async def handle_replace_all_command(event, parts):
     """处理 replace_all 命令"""
     message_text = event.message.text
-    
+
     if len(message_text.split(None, 1)) < 2:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
         await reply_and_delete(event,'用法: /replace_all <匹配规则> [替换内容]\n例如:\n/replace_all 广告  # 删除匹配内容\n/replace_all 广告 [已替换]')
@@ -1963,12 +1961,12 @@ async def handle_replace_all_command(event, parts):
 
     # 直接分割参数，保持正则表达式的原始形式
     _, args_text = message_text.split(None, 1)
-    
+
     # 按第一个空格分割，保持后续内容不变
     parts = args_text.split(None, 1)
     pattern = parts[0]
     content = parts[1] if len(parts) > 1 else ''
-    
+
     logger.info(f"解析替换命令参数: pattern='{pattern}', content='{content}'")
 
     session = get_session()
@@ -2147,7 +2145,7 @@ async def handle_delete_rule_command(event, command, parts):
 
         # 提交事务
         session.commit()
-        
+
         # 清理不再使用的聊天记录
         # 这里直接对整个数据库进行一次清理，不需要单独处理每个规则
         # 因为所有规则都已经从数据库中删除

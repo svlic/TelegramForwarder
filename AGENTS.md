@@ -43,10 +43,10 @@ TelegramForwarder v1.7.2 - Telegram消息转发机器人，支持关键词过滤
 
 ## FILTER FLOW (执行顺序)
 ```
-消息 → init_filter → keyword_filter → replace_filter → 
-ai_filter → media_filter → reply_filter → sender_filter → 
-comment_button_filter → info_filter → delay_filter → 
-edit_filter → delete_original_filter
+消息 → init_filter → keyword_filter → replace_filter →
+ai_filter → media_filter → reply_filter → sender_filter →
+comment_button_filter → info_filter → delay_filter →
+edit_filter
 ```
 
 ## CONVENTIONS

@@ -150,18 +150,18 @@ _CACHE_DURATION = timedelta(minutes=30)  # 缓存30分钟
 async def get_channel_admins(client, chat_id):
     """获取频道管理员列表，带缓存机制"""
     current_time = datetime.now()
-    
+
     # 检查缓存是否存在且未过期
     if chat_id in _admin_cache:
         cache_data = _admin_cache[chat_id]
         if current_time - cache_data['timestamp'] < _CACHE_DURATION:
             return cache_data['admin_ids']
-    
+
     # 缓存不存在或已过期，重新获取管理员列表
     try:
         admins = await client.get_participants(chat_id, filter=ChannelParticipantsAdmins)
         admin_ids = [admin.id for admin in admins]
-        
+
         # 更新缓存
         _admin_cache[chat_id] = {
             'admin_ids': admin_ids,
@@ -174,7 +174,7 @@ async def get_channel_admins(client, chat_id):
 
 async def is_admin(event):
     """检查用户是否为频道/群组管理员
-    
+
     Args:
         event: 事件对象
     Returns:
@@ -192,21 +192,21 @@ async def is_admin(event):
             else:
                 logger.info(f'用户 {event.sender_id} 非管理员，操作已被忽略')
                 return False
-            
+
         message = event.message
         main = await get_main_module()
         client = main.user_client
-        
-        
-    
+
+
+
         if message.is_channel and not message.is_group:
             # 获取频道管理员列表（使用缓存）
             channel_admins = await get_channel_admins(client, event.chat_id)
             if channel_admins is None:
                 return False
-                
-            
-            
+
+
+
             # 检查机器人管理员是否在频道管理员列表中
             admin_in_channel = any(admin_id in channel_admins for admin_id in bot_admins)
             if not admin_in_channel:
@@ -217,7 +217,7 @@ async def is_admin(event):
             # 检查发送者ID
             user_id = event.sender_id  # 使用 sender_id 作为主要ID来源
             logger.info(f'发送者ID：{user_id}')
-            
+
             bot_admins = get_admin_list()
             # 检查是否是机器人管理员
             if user_id not in bot_admins:
@@ -245,11 +245,11 @@ async def get_ai_settings_text(rule):
 async def get_sender_info(event, rule_id):
     """
     获取发送者信息
-    
+
     Args:
         event: 消息事件
         rule_id: 规则ID
-        
+
     Returns:
         str: 发送者信息
     """
@@ -297,20 +297,20 @@ async def get_sender_info(event, rule_id):
 async def check_and_clean_chats(session, rule=None):
     """
     检查并清理不再与任何规则关联的聊天记录
-    
+
     Args:
         session: 数据库会话
         rule: 被删除的规则对象（可选），如果提供则从中获取聊天ID
-        
+
     Returns:
         int: 删除的聊天记录数量
     """
     deleted_count = 0
-    
+
     try:
         # 获取所有聊天ID
         chat_ids_to_check = set()
-        
+
         # 如果提供了规则，先检查这些受影响的聊天
         if rule:
             if rule.source_chat_id:
@@ -321,18 +321,18 @@ async def check_and_clean_chats(session, rule=None):
             # 如果没有提供规则，则获取所有聊天
             all_chats = session.query(Chat.id).all()
             chat_ids_to_check = set(chat[0] for chat in all_chats)
-        
+
         # 对每个聊天ID进行检查
         for chat_id in chat_ids_to_check:
             # 检查此聊天是否还被任何规则引用
             as_source = session.query(ForwardRule).filter(
                 ForwardRule.source_chat_id == chat_id
             ).count()
-            
+
             as_target = session.query(ForwardRule).filter(
                 ForwardRule.target_chat_id == chat_id
             ).count()
-            
+
             # 如果聊天不再被任何规则引用
             if as_source == 0 and as_target == 0:
                 chat = session.query(Chat).get(chat_id)
@@ -340,28 +340,28 @@ async def check_and_clean_chats(session, rule=None):
                     # 获取telegram_chat_id以便日志记录
                     telegram_chat_id = chat.telegram_chat_id
                     name = chat.name or "未命名聊天"
-                    
+
                     # 清理所有引用此聊天作为current_add_id的记录
                     chats_using_this = session.query(Chat).filter(
                         Chat.current_add_id == telegram_chat_id
                     ).all()
-                    
+
                     for other_chat in chats_using_this:
                         other_chat.current_add_id = None
                         logger.info(f'清除聊天 {other_chat.name} 的current_add_id设置')
-                    
+
                     # 删除聊天记录
                     session.delete(chat)
                     logger.info(f'删除未使用的聊天: {name} (ID: {telegram_chat_id})')
                     deleted_count += 1
-        
+
         # 如果有删除操作，提交更改
         if deleted_count > 0:
             session.commit()
             logger.info(f'共清理了 {deleted_count} 个未使用的聊天记录')
-        
+
         return deleted_count
-        
+
     except Exception as e:
         logger.error(f'检查和清理聊天记录时出错: {str(e)}')
         session.rollback()
@@ -393,10 +393,6 @@ async def check_keywords(rule, message_text, event = None):
     Returns:
         bool: 是否应该转发消息
     """
-    reverse_blacklist = rule.enable_reverse_blacklist
-    reverse_whitelist = rule.enable_reverse_whitelist
-    logger.info(f"反转黑名单: {reverse_blacklist}, 反转白名单: {reverse_whitelist}")
-
     # 处理用户信息过滤
     if rule.is_filter_user_info and event:
         message_text = await process_user_info(event, rule.id, message_text)
@@ -405,85 +401,70 @@ async def check_keywords(rule, message_text, event = None):
     logger.info(f"当前转发模式: {rule.forward_mode}")
     forward_mode = rule.forward_mode
 
+    # 计算有效的白名单和黑名单关键词（反转=类型翻转合并到同级）
+    base_whitelist = [k for k in rule.keywords if not k.is_blacklist]
+    base_blacklist = [k for k in rule.keywords if k.is_blacklist]
+
+    # 反转逻辑：反转后合并到同级，不再双层
+    if rule.enable_reverse_blacklist:
+        # 黑名单反转为白名单，合并到白名单
+        effective_whitelist = base_whitelist + base_blacklist
+        effective_blacklist = []
+        logger.info(f"黑名单已反转并合并到白名单，有效白名单: {[k.keyword for k in effective_whitelist]}")
+    elif rule.enable_reverse_whitelist:
+        # 白名单反转为黑名单，合并到黑名单
+        effective_whitelist = []
+        effective_blacklist = base_blacklist + base_whitelist
+        logger.info(f"白名单已反转并合并到黑名单，有效黑名单: {[k.keyword for k in effective_blacklist]}")
+    else:
+        effective_whitelist = base_whitelist
+        effective_blacklist = base_blacklist
+        logger.info(f"有效白名单关键词: {[k.keyword for k in effective_whitelist]}")
+        logger.info(f"有效黑名单关键词: {[k.keyword for k in effective_blacklist]}")
+
     # 仅白名单模式
     if forward_mode == ForwardMode.WHITELIST:
-        return await process_whitelist_mode(rule, message_text, reverse_blacklist)
+        return await process_whitelist_mode(effective_whitelist, message_text)
 
     # 仅黑名单模式
     elif forward_mode == ForwardMode.BLACKLIST:
-        return await process_blacklist_mode(rule, message_text, reverse_whitelist)
+        return await process_blacklist_mode(effective_blacklist, message_text)
 
     # 先白后黑模式
     elif forward_mode == ForwardMode.WHITELIST_THEN_BLACKLIST:
-        return await process_whitelist_then_blacklist_mode(rule, message_text, reverse_blacklist)
+        return await process_whitelist_then_blacklist_mode(effective_whitelist, effective_blacklist, message_text)
 
     # 先黑后白模式
     elif forward_mode == ForwardMode.BLACKLIST_THEN_WHITELIST:
-        return await process_blacklist_then_whitelist_mode(rule, message_text, reverse_whitelist)
+        return await process_blacklist_then_whitelist_mode(effective_blacklist, effective_whitelist, message_text)
 
     logger.error(f"未知的转发模式: {forward_mode}")
     return False
 
-async def process_whitelist_mode(rule, message_text, reverse_blacklist):
+async def process_whitelist_mode(whitelist_keywords, message_text):
     """处理仅白名单模式"""
     logger.info("进入仅白名单模式")
-    should_forward = False
 
-    # 检查普通白名单关键词
-    whitelist_keywords = [k for k in rule.keywords if not k.is_blacklist]
-    logger.info(f"普通白名单关键词: {[k.keyword for k in whitelist_keywords]}")
-    
-    for keyword in whitelist_keywords:
-        if await check_keyword_match(keyword, message_text):
-            should_forward = True
-            break
-    
-    if not should_forward:
-        logger.info("未匹配到普通白名单关键词，不转发")
+    if not whitelist_keywords:
+        logger.info("白名单为空，不转发")
         return False
 
-    # 如果启用了黑名单反转，还需要匹配反转后的黑名单（作为第二重白名单）
-    if reverse_blacklist:
-        logger.info("检查反转后的黑名单关键词（作为白名单）")
-        reversed_blacklist = [k for k in rule.keywords if k.is_blacklist]
-        logger.info(f"反转后的黑名单关键词: {[k.keyword for k in reversed_blacklist]}")
-        
-        reversed_match = False
-        for keyword in reversed_blacklist:
-            if await check_keyword_match(keyword, message_text):
-                reversed_match = True
-                break
-        
-        if not reversed_match:
-            logger.info("未匹配到反转后的黑名单关键词，不转发")
-            return False
+    for keyword in whitelist_keywords:
+        if await check_keyword_match(keyword, message_text):
+            logger.info(f"匹配到白名单关键词 '{keyword.keyword}'，允许转发")
+            return True
 
-    logger.info("所有白名单条件都满足，允许转发")
-    return True
+    logger.info("未匹配到任何白名单关键词，不转发")
+    return False
 
-async def process_blacklist_mode(rule, message_text, reverse_whitelist):
+async def process_blacklist_mode(blacklist_keywords, message_text):
     """处理仅黑名单模式"""
     logger.info("进入仅黑名单模式")
 
-    # 检查普通黑名单关键词
-    blacklist_keywords = [k for k in rule.keywords if k.is_blacklist]
-    logger.info(f"普通黑名单关键词: {[k.keyword for k in blacklist_keywords]}")
-    
     for keyword in blacklist_keywords:
         if await check_keyword_match(keyword, message_text):
             logger.info(f"匹配到黑名单关键词 '{keyword.keyword}'，不转发")
             return False
-
-    # 如果启用了白名单反转，检查反转后的白名单（作为黑名单）
-    if reverse_whitelist:
-        logger.info("检查反转后的白名单关键词（作为黑名单）")
-        reversed_whitelist = [k for k in rule.keywords if not k.is_blacklist]
-        logger.info(f"反转后的白名单关键词: {[k.keyword for k in reversed_whitelist]}")
-        
-        for keyword in reversed_whitelist:
-            if await check_keyword_match(keyword, message_text):
-                logger.info(f"匹配到反转后的白名单关键词 '{keyword.keyword}'，不转发")
-                return False
 
     logger.info("未匹配到任何黑名单关键词，允许转发")
     return True
@@ -508,7 +489,7 @@ async def process_user_info(event, rule_id, message_text):
     """处理用户信息过滤"""
     username = await get_sender_info(event, rule_id)
     name = None
-    
+
     if hasattr(event.message, 'sender_chat') and event.message.sender_chat:
         sender = event.message.sender_chat
         name = sender.title if hasattr(sender, 'title') else None
@@ -518,7 +499,7 @@ async def process_user_info(event, rule_id, message_text):
             sender.title if hasattr(sender, 'title')
             else f"{sender.first_name or ''} {sender.last_name or ''}".strip()
         )
-        
+
     if username and name:
         logger.info(f"成功获取用户信息: {username} {name}")
         return f"{username} {name}:\n{message_text}"
@@ -533,97 +514,44 @@ async def process_user_info(event, rule_id, message_text):
         return message_text
 
 
-async def process_whitelist_then_blacklist_mode(rule, message_text, reverse_blacklist):
-    """处理先白后黑模式
-    
-    先检查白名单（必须匹配），然后检查黑名单（不能匹配）
-    如果启用黑名单反转，则黑名单变成第二重白名单（必须匹配）
-    """
+async def process_whitelist_then_blacklist_mode(whitelist_keywords, blacklist_keywords, message_text):
     logger.info("进入先白后黑模式")
 
-    # 检查普通白名单（必须匹配）
     whitelist_match = False
-    whitelist_keywords = [k for k in rule.keywords if not k.is_blacklist]
-    logger.info(f"检查普通白名单关键词: {[k.keyword for k in whitelist_keywords]}")
-    
     for keyword in whitelist_keywords:
         if await check_keyword_match(keyword, message_text):
             whitelist_match = True
             break
-    
+
     if not whitelist_match:
         logger.info("未匹配到白名单关键词，不转发")
         return False
 
-    # 根据反转设置处理黑名单
-    blacklist_keywords = [k for k in rule.keywords if k.is_blacklist]
-    
-    if reverse_blacklist:
-        # 黑名单反转为白名单，必须匹配才转发
-        logger.info("黑名单已反转，作为第二重白名单检查")
-        logger.info(f"反转后的黑名单关键词: {[k.keyword for k in blacklist_keywords]}")
-        
-        blacklist_match = False
-        for keyword in blacklist_keywords:
-            if await check_keyword_match(keyword, message_text):
-                blacklist_match = True
-                break
-        
-        if not blacklist_match:
-            logger.info("未匹配到反转后的黑名单关键词，不转发")
-            return False
-    else:
-        # 正常黑名单，匹配则不转发
-        logger.info(f"检查普通黑名单关键词: {[k.keyword for k in blacklist_keywords]}")
-        for keyword in blacklist_keywords:
-            if await check_keyword_match(keyword, message_text):
-                logger.info(f"匹配到黑名单关键词 '{keyword.keyword}'，不转发")
-                return False
-
-    logger.info("所有条件都满足，允许转发")
-    return True
-
-async def process_blacklist_then_whitelist_mode(rule, message_text, reverse_whitelist):
-    """处理先黑后白模式
-    
-    先检查黑名单（不能匹配），然后检查白名单（必须匹配）
-    如果启用白名单反转，则白名单变成第二重黑名单（不能匹配）
-    """
-    logger.info("进入先黑后白模式")
-
-    # 检查普通黑名单（匹配则拒绝）
-    blacklist_keywords = [k for k in rule.keywords if k.is_blacklist]
-    logger.info(f"检查普通黑名单关键词: {[k.keyword for k in blacklist_keywords]}")
-    
     for keyword in blacklist_keywords:
         if await check_keyword_match(keyword, message_text):
             logger.info(f"匹配到黑名单关键词 '{keyword.keyword}'，不转发")
             return False
 
-    # 处理白名单
-    whitelist_keywords = [k for k in rule.keywords if not k.is_blacklist]
-    
-    if reverse_whitelist:
-        # 白名单反转为黑名单，匹配则不转发
-        logger.info("白名单已反转，作为第二重黑名单检查")
-        logger.info(f"反转后的白名单关键词: {[k.keyword for k in whitelist_keywords]}")
-        
-        for keyword in whitelist_keywords:
-            if await check_keyword_match(keyword, message_text):
-                logger.info(f"匹配到反转后的白名单关键词 '{keyword.keyword}'，不转发")
-                return False
-    else:
-        # 正常白名单，必须匹配才转发
-        logger.info(f"检查普通白名单关键词: {[k.keyword for k in whitelist_keywords]}")
-        whitelist_match = False
-        for keyword in whitelist_keywords:
-            if await check_keyword_match(keyword, message_text):
-                whitelist_match = True
-                break
-        
-        if not whitelist_match:
-            logger.info("未匹配到白名单关键词，不转发")
+    logger.info("所有条件都满足，允许转发")
+    return True
+
+async def process_blacklist_then_whitelist_mode(blacklist_keywords, whitelist_keywords, message_text):
+    logger.info("进入先黑后白模式")
+
+    for keyword in blacklist_keywords:
+        if await check_keyword_match(keyword, message_text):
+            logger.info(f"匹配到黑名单关键词 '{keyword.keyword}'，不转发")
             return False
+
+    whitelist_match = False
+    for keyword in whitelist_keywords:
+        if await check_keyword_match(keyword, message_text):
+            whitelist_match = True
+            break
+
+    if not whitelist_match:
+        logger.info("未匹配到白名单关键词，不转发")
+        return False
 
     logger.info("所有条件都满足，允许转发")
     return True

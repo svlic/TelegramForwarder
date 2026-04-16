@@ -41,7 +41,7 @@ RULE_SETTINGS = {
         'values': {
             ForwardMode.BLACKLIST: '仅黑名单',
             ForwardMode.WHITELIST: '仅白名单',
-            ForwardMode.BLACKLIST_THEN_WHITELIST: '先黑名单后白名单', 
+            ForwardMode.BLACKLIST_THEN_WHITELIST: '先黑名单后白名单',
             ForwardMode.WHITELIST_THEN_BLACKLIST: '先白名单后黑名单'
         },
         'toggle_action': 'toggle_forward_mode',
@@ -91,15 +91,6 @@ RULE_SETTINGS = {
             False: '不附带'
         },
         'toggle_action': 'toggle_original_link',
-        'toggle_func': lambda current: not current
-    },
-    'is_delete_original': {
-        'display_name': '删除原始消息',
-        'values': {
-            True: '开启',
-            False: '关闭'
-        },
-        'toggle_action': 'toggle_delete_original',
         'toggle_func': lambda current: not current
     },
     'is_ufb': {
@@ -420,7 +411,7 @@ async def create_settings_text(rule):
     """创建设置信息文本"""
     text = (
         "📋 管理转发规则\n\n"
-        f"规则ID: `{rule.id}`\n" 
+        f"规则ID: `{rule.id}`\n"
         f"{rule.source_chat.name} --> {rule.target_chat.name}"
     )
     return text
@@ -518,10 +509,6 @@ async def create_buttons(rule):
         ])
 
         buttons.append([
-            Button.inline(
-                f"🗑 删除原消息: {RULE_SETTINGS['is_delete_original']['values'][rule.is_delete_original]}",
-                f"toggle_delete_original:{rule.id}"
-            ),
             Button.inline(
                 f"💬 评论区按钮: {RULE_SETTINGS['enable_comment_button']['values'][rule.enable_comment_button]}",
                 f"toggle_enable_comment_button:{rule.id}"
