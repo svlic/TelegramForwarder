@@ -1,13 +1,11 @@
 import asyncio
 from datetime import datetime, timedelta
 import pytz
-import os
 import logging
-from dotenv import load_dotenv
 from telethon import TelegramClient
 from models.models import get_session, Chat
 import traceback
-from utils.constants import DEFAULT_TIMEZONE
+from utils.constants import DEFAULT_TIMEZONE, CHAT_UPDATE_TIME
 logger = logging.getLogger(__name__)
 
 class ChatUpdater:
@@ -16,7 +14,7 @@ class ChatUpdater:
         self.timezone = pytz.timezone(DEFAULT_TIMEZONE)
         self.task = None
         # 从环境变量获取更新时间，默认凌晨3点
-        self.update_time = os.getenv('CHAT_UPDATE_TIME', "03:00")
+        self.update_time = CHAT_UPDATE_TIME
     
     async def start(self):
         """启动定时更新任务"""

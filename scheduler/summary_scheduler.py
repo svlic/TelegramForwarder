@@ -3,12 +3,9 @@ from datetime import datetime, timedelta
 import pytz
 from models.models import get_session, ForwardRule
 import logging
-import os
-from dotenv import load_dotenv
 from telethon import TelegramClient, errors
 from ai import get_ai_provider
-import traceback
-from utils.constants import DEFAULT_TIMEZONE,DEFAULT_AI_MODEL,DEFAULT_SUMMARY_PROMPT
+from utils.constants import DEFAULT_TIMEZONE, SUMMARY_BATCH_SIZE, SUMMARY_BATCH_DELAY, DEFAULT_SUMMARY_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +25,8 @@ class SummaryScheduler:
         # 添加信号量来限制并发请求
         self.request_semaphore = asyncio.Semaphore(2)  # 最多同时执行2个请求
         # 从环境变量获取配置
-        self.batch_size = int(os.getenv('SUMMARY_BATCH_SIZE', 20))
-        self.batch_delay = int(os.getenv('SUMMARY_BATCH_DELAY', 2))
+        self.batch_size = SUMMARY_BATCH_SIZE
+        self.batch_delay = SUMMARY_BATCH_DELAY
 
     async def schedule_rule(self, rule):
         """为规则创建或更新定时任务"""
@@ -216,12 +213,11 @@ class SummaryScheduler:
 
                 all_messages = '\n'.join(messages)
 
-                # 检查AI模型设置，如未设置则使用默认模型
                 if not rule.ai_model:
-                    rule.ai_model = DEFAULT_AI_MODEL
-                    logger.info(f"使用默认AI模型进行总结: {rule.ai_model}")
-                else:
-                    logger.info(f"使用规则配置的AI模型进行总结: {rule.ai_model}")
+                    logger.warning(f"规则 {rule_id} 未配置AI模型，跳过总结")
+                    return
+                    
+                logger.info(f"使用规则配置的AI模型进行总结: {rule.ai_model}")
 
                 # 获取AI提供者并处理总结
                 provider = await get_ai_provider(rule.ai_model)
