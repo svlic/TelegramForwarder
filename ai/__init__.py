@@ -1,3 +1,5 @@
+import logging
+
 from .base import BaseAIProvider
 from .openai_provider import OpenAIProvider
 from .gemini_provider import GeminiProvider
@@ -5,47 +7,36 @@ from .deepseek_provider import DeepSeekProvider
 from .qwen_provider import QwenProvider
 from .grok_provider import GrokProvider
 from .claude_provider import ClaudeProvider
-import os
-import logging
-from utils.settings import load_ai_models
-from utils.constants import DEFAULT_AI_MODEL
 
-# 获取日志记录器
 logger = logging.getLogger(__name__)
 
-async def get_ai_provider(model=None):
-    """获取AI提供者实例"""
-    if not model:
-        model = DEFAULT_AI_MODEL
-    
-    # 加载提供商配置（使用dict格式）
-    providers_config = load_ai_models(type="dict")
-    
-    # 根据模型名称选择对应的提供者
-    provider = None
-    
-    # 遍历配置中的每个提供商
-    for provider_name, models_list in providers_config.items():
-        # 检查完全匹配
-        if model in models_list:
-            if provider_name == "openai":
-                provider = OpenAIProvider()
-            elif provider_name == "gemini":
-                provider = GeminiProvider()
-            elif provider_name == "deepseek":
-                provider = DeepSeekProvider()
-            elif provider_name == "qwen":
-                provider = QwenProvider()
-            elif provider_name == "grok":
-                provider = GrokProvider()
-            elif provider_name == "claude":
-                provider = ClaudeProvider()
-            break
-    
-    if not provider:
-        raise ValueError(f"不支持的模型: {model}")
+PROVIDER_MAP = {
+    'gpt': OpenAIProvider,
+    'o1': OpenAIProvider,
+    'o3': OpenAIProvider,
+    'chatgpt': OpenAIProvider,
+    'claude': ClaudeProvider,
+    'gemini': GeminiProvider,
+    'deepseek': DeepSeekProvider,
+    'qwen': QwenProvider,
+    'qwq': QwenProvider,
+    'qvq': QwenProvider,
+    'grok': GrokProvider,
+}
 
-    return provider
+
+async def get_ai_provider(model=None):
+    if not model:
+        raise ValueError("未指定AI模型。请在规则中配置 ai_model 字段。")
+
+    model_lower = model.lower()
+
+    for prefix, provider_cls in PROVIDER_MAP.items():
+        if model_lower.startswith(prefix):
+            logger.info(f"模型 '{model}' 匹配 provider: {provider_cls.__name__}")
+            return provider_cls()
+
+    raise ValueError(f"无法识别模型 '{model}'。支持的模型前缀: {', '.join(PROVIDER_MAP.keys())}")
 
 
 __all__ = [

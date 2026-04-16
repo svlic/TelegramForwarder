@@ -3,7 +3,7 @@ from filters.base_filter import BaseFilter
 from utils.common import check_keywords
 from utils.common import get_main_module
 from ai import get_ai_provider
-from utils.constants import DEFAULT_AI_MODEL, DEFAULT_AI_PROMPT
+from utils.constants import DEFAULT_AI_PROMPT
 from datetime import datetime, timedelta
 import asyncio
 import re
@@ -184,13 +184,13 @@ async def _ai_handle(message: str, rule, image_files=None) -> str:
         if not rule.is_ai:
             logger.info("AI处理未开启，返回原始消息")
             return message
-        # 先读取数据库，如果ai模型为空，则使用.env中的默认模型
+        
         if not rule.ai_model:
-            rule.ai_model = DEFAULT_AI_MODEL
-            logger.info(f"使用默认AI模型: {rule.ai_model}")
-        else:
-            logger.info(f"使用规则配置的AI模型: {rule.ai_model}")
+            logger.warning("AI处理已开启但未配置模型，跳过AI处理")
+            return message
             
+        logger.info(f"使用规则配置的AI模型: {rule.ai_model}")
+        
         provider = await get_ai_provider(rule.ai_model)
         
         if not rule.ai_prompt:
