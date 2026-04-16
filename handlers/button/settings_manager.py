@@ -52,15 +52,6 @@ RULE_SETTINGS = {
             ForwardMode.WHITELIST_THEN_BLACKLIST: ForwardMode.BLACKLIST
         }[current]
     },
-    'use_bot': {
-        'display_name': '转发方式',
-        'values': {
-            True: '使用机器人',
-            False: '使用用户账号'
-        },
-        'toggle_action': 'toggle_bot',
-        'toggle_func': lambda current: not current
-    },
     'is_replace': {
         'display_name': '替换模式',
         'values': {
@@ -349,6 +340,15 @@ MEDIA_SETTINGS = {
         },
         'toggle_action': 'toggle_media_allow_text',
         'toggle_func': lambda current: not current
+    },
+    'media_caption_filter': {
+        'display_name': 'Caption过滤',
+        'values': {
+            True: '开启',
+            False: '关闭'
+        },
+        'toggle_action': 'toggle_media_caption_filter',
+        'toggle_func': lambda current: not current
     }
 }
 
@@ -405,12 +405,12 @@ OTHER_SETTINGS = {
         'toggle_func': None
     },
     'reverse_blacklist': {
-        'display_name': '反转黑名单',
+        'display_name': '反转黑名单(合并到白名单)',
         'toggle_action': 'toggle_reverse_blacklist',
         'toggle_func': None
     },
     'reverse_whitelist': {
-        'display_name': '反转白名单',
+        'display_name': '反转白名单(合并到黑名单)',
         'toggle_action': 'toggle_reverse_whitelist',
         'toggle_func': None
     }
@@ -481,123 +481,108 @@ async def create_buttons(rule):
             Button.inline(
                 f"📥 过滤模式: {RULE_SETTINGS['forward_mode']['values'][rule.forward_mode]}",
                 f"toggle_forward_mode:{rule.id}"
-            ),
-            Button.inline(
-                f"🤖 转发方式: {RULE_SETTINGS['use_bot']['values'][rule.use_bot]}",
-                f"toggle_bot:{rule.id}"
             )
         ])
 
+        buttons.append([
+            Button.inline(
+                f"🔄 替换模式: {RULE_SETTINGS['is_replace']['values'][rule.is_replace]}",
+                f"toggle_replace:{rule.id}"
+            ),
+            Button.inline(
+                f"📝 消息格式: {RULE_SETTINGS['message_mode']['values'][rule.message_mode]}",
+                f"toggle_message_mode:{rule.id}"
+            )
+        ])
 
-        if rule.use_bot:  # 只在使用机器人时显示这些设置
+        buttons.append([
+            Button.inline(
+                f"👁 预览模式: {RULE_SETTINGS['is_preview']['values'][rule.is_preview]}",
+                f"toggle_preview:{rule.id}"
+            ),
+            Button.inline(
+                f"🔗 原始链接: {RULE_SETTINGS['is_original_link']['values'][rule.is_original_link]}",
+                f"toggle_original_link:{rule.id}"
+            )
+        ])
+
+        buttons.append([
+            Button.inline(
+                f"👤 原始发送者: {RULE_SETTINGS['is_original_sender']['values'][rule.is_original_sender]}",
+                f"toggle_original_sender:{rule.id}"
+            ),
+            Button.inline(
+                f"⏰ 发送时间: {RULE_SETTINGS['is_original_time']['values'][rule.is_original_time]}",
+                f"toggle_original_time:{rule.id}"
+            )
+        ])
+
+        buttons.append([
+            Button.inline(
+                f"🗑 删除原消息: {RULE_SETTINGS['is_delete_original']['values'][rule.is_delete_original]}",
+                f"toggle_delete_original:{rule.id}"
+            ),
+            Button.inline(
+                f"💬 评论区按钮: {RULE_SETTINGS['enable_comment_button']['values'][rule.enable_comment_button]}",
+                f"toggle_enable_comment_button:{rule.id}"
+            )
+        ])
+
+        buttons.append([
+            Button.inline(
+                f"⏱️ 延迟处理: {RULE_SETTINGS['enable_delay']['values'][rule.enable_delay]}",
+                f"toggle_enable_delay:{rule.id}"
+            ),
+            Button.inline(
+                f"⌛ 延迟秒数: {rule.delay_seconds or 5}秒",
+                f"set_delay_time:{rule.id}"
+            )
+        ])
+
+        buttons.append([
+            Button.inline(
+                f"🔄 同步规则: {RULE_SETTINGS['enable_sync']['values'][rule.enable_sync]}",
+                f"toggle_enable_sync:{rule.id}"
+            ),
+            Button.inline(
+                f"📡 同步设置",
+                f"set_sync_rule:{rule.id}"
+            )
+        ])
+
+        if UFB_ENABLED == 'true':
             buttons.append([
                 Button.inline(
-                    f"🔄 替换模式: {RULE_SETTINGS['is_replace']['values'][rule.is_replace]}",
-                    f"toggle_replace:{rule.id}"
-                ),
-                Button.inline(
-                    f"📝 消息格式: {RULE_SETTINGS['message_mode']['values'][rule.message_mode]}",
-                    f"toggle_message_mode:{rule.id}"
+                    f"☁️ UFB同步: {RULE_SETTINGS['is_ufb']['values'][rule.is_ufb]}",
+                    f"toggle_ufb:{rule.id}"
                 )
             ])
 
-            buttons.append([
-                Button.inline(
-                    f"👁 预览模式: {RULE_SETTINGS['is_preview']['values'][rule.is_preview]}",
-                    f"toggle_preview:{rule.id}"
-                ),
-                Button.inline(
-                    f"🔗 原始链接: {RULE_SETTINGS['is_original_link']['values'][rule.is_original_link]}",
-                    f"toggle_original_link:{rule.id}"
-                )
-            ])
+        buttons.append([
+            Button.inline(
+                "🤖 AI设置",
+                f"ai_settings:{rule.id}"
+            ),
+            Button.inline(
+                "🎬 媒体设置",
+                f"media_settings:{rule.id}"
+            ),
+            Button.inline(
+                "➕ 其他设置",
+                f"other_settings:{rule.id}"
+            )
+        ])
 
-            buttons.append([
-                Button.inline(
-                    f"👤 原始发送者: {RULE_SETTINGS['is_original_sender']['values'][rule.is_original_sender]}",
-                    f"toggle_original_sender:{rule.id}"
-                ),
-                Button.inline(
-                    f"⏰ 发送时间: {RULE_SETTINGS['is_original_time']['values'][rule.is_original_time]}",
-                    f"toggle_original_time:{rule.id}"
-                )
-            ])
-
-            buttons.append([
-                Button.inline(
-                    f"🗑 删除原消息: {RULE_SETTINGS['is_delete_original']['values'][rule.is_delete_original]}",
-                    f"toggle_delete_original:{rule.id}"
-                ),
-                Button.inline(
-                    f"💬 评论区按钮: {RULE_SETTINGS['enable_comment_button']['values'][rule.enable_comment_button]}",
-                    f"toggle_enable_comment_button:{rule.id}"
-                )
-
-            ])
-
-            # 添加延迟过滤器按钮
-            buttons.append([
-                Button.inline(
-                    f"⏱️ 延迟处理: {RULE_SETTINGS['enable_delay']['values'][rule.enable_delay]}",
-                    f"toggle_enable_delay:{rule.id}"
-                ),
-                Button.inline(
-                    f"⌛ 延迟秒数: {rule.delay_seconds or 5}秒",
-                    f"set_delay_time:{rule.id}"
-                )
-            ])
-
-
-
-            # 添加同步规则相关按钮
-            buttons.append([
-                Button.inline(
-                    f"🔄 同步规则: {RULE_SETTINGS['enable_sync']['values'][rule.enable_sync]}",
-                    f"toggle_enable_sync:{rule.id}"
-                ),
-                Button.inline(
-                    f"📡 同步设置",
-                    f"set_sync_rule:{rule.id}"
-                )
-            ])
-
-            if UFB_ENABLED == 'true':
-                buttons.append([
-                    Button.inline(
-                        f"☁️ UFB同步: {RULE_SETTINGS['is_ufb']['values'][rule.is_ufb]}",
-                        f"toggle_ufb:{rule.id}"
-                    )
-                ])
-
-            
-            
-
-            buttons.append([
-                Button.inline(
-                    "🤖 AI设置",
-                    f"ai_settings:{rule.id}"
-                ),
-                Button.inline(
-                    "🎬 媒体设置",
-                    f"media_settings:{rule.id}"
-                ),
-                Button.inline(
-                    "➕ 其他设置",
-                    f"other_settings:{rule.id}"
-                )
-            ])
-
-    
-            buttons.append([
-                Button.inline(
-                    "👈 返回",
-                    "settings"
-                ),
-                Button.inline(
-                    "❌ 关闭",
-                    "close_settings"
-                )
-            ])
+        buttons.append([
+            Button.inline(
+                "👈 返回",
+                "settings"
+            ),
+            Button.inline(
+                "❌ 关闭",
+                "close_settings"
+            )
+        ])
 
 
     finally:

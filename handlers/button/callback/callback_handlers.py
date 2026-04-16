@@ -538,10 +538,7 @@ async def update_rule_setting(event, rule_id, session, message, field_name, conf
         elif setting_type == 'other':
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule))
         display_name = config.get('display_name', field_name)
-        if field_name == 'use_bot':
-            await event.answer(f'已切换到{"机器人" if new_value else "用户账号"}模式')
-        else:
-            await event.answer(f'已更新{display_name}')
+        await event.answer(f'已更新{display_name}')
         return True
     except Exception as e:
         session.rollback()
@@ -645,6 +642,7 @@ CALLBACK_HANDLERS = {
     'media_extensions_page': callback_media_extensions_page,
     'toggle_media_extension': callback_toggle_media_extension,
     'toggle_media_allow_text': callback_toggle_media_allow_text,
+    'toggle_media_caption_filter': callback_toggle_media_caption_filter,
     'noop': callback_noop,
     # 其他设置
     'other_settings': callback_other_settings,

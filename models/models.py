@@ -28,7 +28,6 @@ class ForwardRule(Base):
     source_chat_id = Column(Integer, ForeignKey('chats.id'), nullable=False)
     target_chat_id = Column(Integer, ForeignKey('chats.id'), nullable=False)
     forward_mode = Column(Enum(ForwardMode), nullable=False, default=ForwardMode.BLACKLIST)
-    use_bot = Column(Boolean, default=True)
     message_mode = Column(Enum(MessageMode), nullable=False, default=MessageMode.MARKDOWN)
     is_replace = Column(Boolean, default=False)
     is_preview = Column(Enum(PreviewMode), nullable=False, default=PreviewMode.FOLLOW)  # 三个值，开，关，按照原消息
@@ -53,9 +52,10 @@ class ForwardRule(Base):
     is_send_over_media_size_message = Column(Boolean, default=True)  # 超过限制的媒体是否发送提示消息
     enable_extension_filter = Column(Boolean, default=False)  # 是否启用媒体扩展名过滤
     extension_filter_mode = Column(Enum(AddMode), nullable=False, default=AddMode.BLACKLIST)  # 媒体扩展名过滤模式，默认黑名单
-    enable_reverse_blacklist = Column(Boolean, default=False)  # 是否反转黑名单
-    enable_reverse_whitelist = Column(Boolean, default=False)  # 是否反转白名单
+    enable_reverse_blacklist = Column(Boolean, default=False)  # 反转黑名单（合并到白名单）
+    enable_reverse_whitelist = Column(Boolean, default=False)  # 反转白名单（合并到黑名单）
     media_allow_text = Column(Boolean, default=False)  # 是否放行文本
+    media_caption_filter = Column(Boolean, default=False)  # 是否仅转发带caption的媒体
     # AI相关字段
     ai_model = Column(String, nullable=True)  # 使用的AI模型
     ai_prompt = Column(String, nullable=True)  # AI处理的prompt
@@ -263,6 +263,7 @@ def migrate_db(engine):
         'time_template': 'ALTER TABLE forward_rules ADD COLUMN time_template VARCHAR DEFAULT "{time}"',
         'original_link_template': 'ALTER TABLE forward_rules ADD COLUMN original_link_template VARCHAR DEFAULT "原始连接：{original_link}"',
         'media_allow_text': 'ALTER TABLE forward_rules ADD COLUMN media_allow_text BOOLEAN DEFAULT FALSE',
+        'media_caption_filter': 'ALTER TABLE forward_rules ADD COLUMN media_caption_filter BOOLEAN DEFAULT FALSE',
         'enable_ai_upload_image': 'ALTER TABLE forward_rules ADD COLUMN enable_ai_upload_image BOOLEAN DEFAULT FALSE',
     }
 
