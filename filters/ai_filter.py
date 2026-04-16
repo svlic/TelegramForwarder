@@ -216,31 +216,31 @@ async def _ai_handle(message: str, rule, image_files=None) -> str:
                 main = await get_main_module()
                 client = main.user_client
                 
-                # 获取源聊天和目标聊天ID
-                source_chat_id = int(rule.source_chat.telegram_chat_id)
-                target_chat_id = int(rule.target_chat.telegram_chat_id)
+                if not rule.source_chat or not rule.target_chat:
+                    logger.warning(f"规则 {rule.id} 缺少source_chat或target_chat，跳过上下文获取")
+                else:
+                    source_chat_id = int(rule.source_chat.telegram_chat_id)
+                    target_chat_id = int(rule.target_chat.telegram_chat_id)
                 
-                # 处理源聊天的消息获取
-                if source_context_match:
-                    count = int(source_context_match.group(1))
-                    chat_history = await _get_chat_messages(client, source_chat_id, count=count)
-                    prompt = prompt.replace(source_context_match.group(0), chat_history)
+                    if source_context_match:
+                        count = int(source_context_match.group(1))
+                        chat_history = await _get_chat_messages(client, source_chat_id, count=count)
+                        prompt = prompt.replace(source_context_match.group(0), chat_history)
+                        
+                    if source_time_match:
+                        minutes = int(source_time_match.group(1))
+                        chat_history = await _get_chat_messages(client, source_chat_id, minutes=minutes)
+                        prompt = prompt.replace(source_time_match.group(0), chat_history)
                     
-                if source_time_match:
-                    minutes = int(source_time_match.group(1))
-                    chat_history = await _get_chat_messages(client, source_chat_id, minutes=minutes)
-                    prompt = prompt.replace(source_time_match.group(0), chat_history)
-                
-                # 处理目标聊天的消息获取
-                if target_context_match:
-                    count = int(target_context_match.group(1))
-                    chat_history = await _get_chat_messages(client, target_chat_id, count=count)
-                    prompt = prompt.replace(target_context_match.group(0), chat_history)
-                    
-                if target_time_match:
-                    minutes = int(target_time_match.group(1))
-                    chat_history = await _get_chat_messages(client, target_chat_id, minutes=minutes)
-                    prompt = prompt.replace(target_time_match.group(0), chat_history)
+                    if target_context_match:
+                        count = int(target_context_match.group(1))
+                        chat_history = await _get_chat_messages(client, target_chat_id, count=count)
+                        prompt = prompt.replace(target_context_match.group(0), chat_history)
+                        
+                    if target_time_match:
+                        minutes = int(target_time_match.group(1))
+                        chat_history = await _get_chat_messages(client, target_chat_id, minutes=minutes)
+                        prompt = prompt.replace(target_time_match.group(0), chat_history)
             
             # 替换消息占位符
             if '{Message}' in prompt:

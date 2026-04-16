@@ -25,22 +25,25 @@ class DelayFilter(BaseFilter):
             bool: 是否继续处理
         """
         rule = context.rule
-        message = context.event
+        event = context.event
         
         # 如果规则未启用延迟处理或延迟秒数为0，则直接通过
         if not rule.enable_delay or rule.delay_seconds <= 0:
             logger.debug(f"[规则ID:{rule.id}] 延迟处理未启用或延迟秒数为0，跳过延迟处理")
             return True
         
-        # 如果消息不完整，则直接通过
-        if not message or not hasattr(message, "chat_id") or not hasattr(message, "id"):
-            logger.debug(f"[规则ID:{rule.id}] 消息不完整，无法应用延迟处理")
+        message = getattr(event, 'message', None) if hasattr(event, 'message') else None
+        if not message:
+            logger.debug(f"[规则ID:{rule.id}] 消息对象不存在，跳过延迟处理")
+            return True
+            
+        if not hasattr(message, "id") or not hasattr(event, "chat_id"):
+            logger.debug(f"[规则ID:{rule.id}] 消息缺少必要属性，跳过延迟处理")
             return True
             
         try:
-
             original_id = message.id
-            chat_id = message.chat_id
+            chat_id = event.chat_id
             
             logger.info(f"[规则ID:{rule.id}] 延迟处理消息 {original_id}，等待 {rule.delay_seconds} 秒...")
             
@@ -55,9 +58,9 @@ class DelayFilter(BaseFilter):
                 
                 # 获取更新后的消息
                 logger.info(f"[规则ID:{rule.id}] 正在获取聊天 {chat_id} 的消息 {original_id}...")
-                updated_message = await client.get_messages(chat_id, ids=original_id)
+                updated_messages = await client.get_messages(chat_id, ids=[original_id])
+                updated_message = updated_messages[0] if isinstance(updated_messages, list) else updated_messages
 
-                
                 if updated_message:
                     updated_text = getattr(updated_message, "text", "")
                     

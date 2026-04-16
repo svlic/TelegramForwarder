@@ -17,13 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 async def callback_ai_settings(event, rule_id, session, message, data):
-    # 显示 AI 设置页面
-    try:
-        rule = session.query(ForwardRule).get(int(rule_id))
-        if rule:
-            await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-    finally:
-        session.close()
+    rule = session.query(ForwardRule).get(int(rule_id))
+    if rule:
+        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
     return
 
 
@@ -57,8 +53,6 @@ async def callback_set_summary_prompt(event, rule_id, session, message, data):
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
     try:
         await state_manager.set_state(user_id, chat_id, state, message, state_type="ai")
-        # 启动超时取消任务
-        asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
         logger.info("状态设置成功")
     except Exception as e:
         logger.error(f"设置状态时出错: {str(e)}")
@@ -79,17 +73,7 @@ async def callback_set_summary_prompt(event, rule_id, session, message, data):
         logger.exception(e)
 
 
-async def cancel_state_after_timeout(user_id: int, chat_id: int, timeout_minutes: int = 5):
-    """在指定时间后自动取消状态"""
-    await asyncio.sleep(timeout_minutes * 60)
-    current_state, _, _ = await state_manager.get_state(user_id, chat_id)
-    if current_state:
-        logger.info(f"状态超时自动取消 - user_id: {user_id}, chat_id: {chat_id}")
-        await state_manager.clear_state(user_id, chat_id)
-
-
 async def callback_set_ai_prompt(event, rule_id, session, message, data):
-    """处理设置AI提示词的回调"""
     logger.info(f"开始处理设置AI提示词回调 - event: {event}, rule_id: {rule_id}")
 
     rule = session.query(ForwardRule).get(rule_id)
@@ -97,9 +81,7 @@ async def callback_set_ai_prompt(event, rule_id, session, message, data):
         await event.answer('规则不存在')
         return
 
-    # 检查是否频道消息
     if isinstance(event.chat, types.Channel):
-        # 检查是否是管理员
         if not await is_admin(event):
             await event.answer('只有管理员可以修改设置')
             return
@@ -113,8 +95,6 @@ async def callback_set_ai_prompt(event, rule_id, session, message, data):
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
     try:
         await state_manager.set_state(user_id, chat_id, state, message, state_type="ai")
-        # 启动超时取消任务
-        asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
         logger.info("状态设置成功")
     except Exception as e:
         logger.error(f"设置状态时出错: {str(e)}")
@@ -229,8 +209,6 @@ async def callback_select_time(event, rule_id, session, message, data):
         except Exception as e:
             logger.error(f"设置总结时间时出错: {str(e)}")
             logger.error(f"错误详情: {traceback.format_exc()}")
-        finally:
-            session.close()
     return
 
 
@@ -286,8 +264,6 @@ async def callback_select_model(event, rule_id, session, message, data):
 
             # 返回到 AI 设置页面
             await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-    finally:
-        session.close()
     return
 
 
@@ -310,49 +286,34 @@ async def callback_set_ai_model(event, rule_id, session, message, data):
 
 async def callback_cancel_set_model(event, rule_id, session, message, data):
     rule_id = data.split(':')[1]
-    try:
-        rule = session.query(ForwardRule).get(int(rule_id))
-        if rule:
-            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
-            await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-            await event.answer("已取消设置")
-    finally:
-        session.close()
+    rule = session.query(ForwardRule).get(int(rule_id))
+    if rule:
+        await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
+        await event.answer("已取消设置")
     return
 
 
 
 async def callback_cancel_set_prompt(event, rule_id, session, message, data):
-    # 处理取消设置提示词
     rule_id = data.split(':')[1]
-    try:
-        rule = session.query(ForwardRule).get(int(rule_id))
-        if rule:
-            # 清除状态
-            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
-            # 返回到 AI 设置页面
-            await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-            await event.answer("已取消设置")
-    finally:
-        session.close()
+    rule = session.query(ForwardRule).get(int(rule_id))
+    if rule:
+        await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
+        await event.answer("已取消设置")
     return
 
 
 
 
 async def callback_cancel_set_summary(event, rule_id, session, message, data):
-    # 处理取消设置总结
     rule_id = data.split(':')[1]
-    try:
-        rule = session.query(ForwardRule).get(int(rule_id))
-        if rule:
-            # 清除状态
-            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
-            # 返回到 AI 设置页面
-            await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-            await event.answer("已取消设置")
-    finally:
-        session.close()
+    rule = session.query(ForwardRule).get(int(rule_id))
+    if rule:
+        await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
+        await event.answer("已取消设置")
     return
 
 async def callback_summary_now(event, rule_id, session, message, data):
@@ -379,8 +340,7 @@ async def callback_summary_now(event, rule_id, session, message, data):
         )
         
         try:
-            # 执行总结任务
-            await asyncio.create_task(scheduler._execute_summary(rule.id,is_now=True))
+            asyncio.create_task(scheduler._execute_summary(rule.id, is_now=True))
             logger.info(f"已启动规则 {rule_id} 的立即总结任务")
         except Exception as e:
             logger.error(f"执行总结任务失败: {str(e)}")

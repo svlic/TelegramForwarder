@@ -252,11 +252,8 @@ async def handle_settings_command(event, command, parts):
             callback_data = f"rule_settings:{rule.id}"
             buttons.append([Button.inline(button_text, callback_data)])
 
-        # 删除用户消息
         client = await get_bot_client()
         await async_delete_user_message(client, event.message.chat_id, event.message.id, 0)
-
-        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
         await reply_and_delete(event,'请选择要管理的转发规则:', buttons=buttons)
 
 async def handle_switch_command(event):
@@ -764,8 +761,6 @@ async def handle_help_command(event, command):
         "• 方括号 [] 表示可选参数\n"
         "• 导入命令需要同时发送文件"
     )
-
-    await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
 
     await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
     await reply_and_delete(event,help_text, parse_mode='markdown')

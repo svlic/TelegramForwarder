@@ -285,21 +285,13 @@ class MediaFilter(BaseFilter):
         return False
 
     async def _is_media_extension_allowed(self, rule, media):
-        """
-        检查媒体扩展名是否被允许
-
-        Args:
-            rule: 转发规则
-            media: 媒体对象
-
-        Returns:
-            bool: 如果扩展名被允许返回True，否则返回False
-        """
-        # 如果没有启用扩展名过滤，默认允许
         if not rule.enable_extension_filter:
             return True
 
-        # 获取文件名
+        if not getattr(media, 'document', None):
+            logger.info("媒体没有document属性，跳过扩展名检查")
+            return True
+
         file_name = None
 
         for attr in media.document.attributes:
@@ -308,7 +300,6 @@ class MediaFilter(BaseFilter):
                 break
 
 
-        # 如果没有文件名，则无法判断扩展名，默认允许
         if not file_name:
             logger.info("无法获取文件名，无法判断扩展名")
             return True
