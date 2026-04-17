@@ -22,6 +22,8 @@ ENV/
 /config
 /ufb/.idea
 ufb/config/config.json
+/config
+/.config
 /images/logo/svg
 /test
 db/forward.db1

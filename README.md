@@ -90,30 +90,24 @@ wget https://raw.githubusercontent.com/Heavrnl/TelegramForwarder/refs/heads/main
 
 ### 3️⃣ 启动服务
 
-首次运行（需要验证）：
-
+首次运行（需要登录验证）：
 ```bash
-docker-compose run -it telegram-forwarder
+docker compose run --rm telegram-forwarder
 ```
-CTRL+C 退出容器
-
-修改 docker-compose.yml 文件，修改 `stdin_open: false` 和 `tty: false`
+按提示完成 Telegram 账号登录验证后，CTRL+C 退出。
 
 后台运行：
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 4️⃣ 更新
-注意：docker-compose运行不需要拉取仓库源码，除非你打算自己build，否则只需要在项目目录执行以下命令即可更新。
+注意：docker compose运行不需要拉取仓库源码，除非你打算自己build，否则只需要在项目目录执行以下命令即可更新。
 ```bash
-docker-compose down
+docker compose pull
 ```
 ```bash
-docker-compose pull
-```
-```bash
-docker-compose up -d
+docker compose up -d
 ```
 ## 📚 使用指南
 
