@@ -1,22 +1,17 @@
 import traceback
-import aiohttp
 import os
 import asyncio
 from telethon.tl import types
 
-from handlers.button.button_helpers import create_media_size_buttons,create_media_settings_buttons,create_media_types_buttons,create_media_extensions_buttons
-from models.models import ForwardRule, MediaTypes, MediaExtensions, RuleSync, Keyword, ReplaceRule
-from enums.enums import AddMode
-import logging
-from utils.common import get_media_settings_text, get_db_ops
-from models.models import get_db_session
-from models.db_operations import DBOperations
 from handlers.button.button_helpers import create_other_settings_buttons
+from models.models import ForwardRule, MediaTypes, MediaExtensions, RuleSync, Keyword, ReplaceRule
+import logging
+from models.models import get_db_session
 from telethon import Button
 from sqlalchemy import inspect
 from utils.constants import RULES_PER_PAGE
 from utils.common import check_and_clean_chats, is_admin
-from utils.auto_delete import reply_and_delete, send_message_and_delete, respond_and_delete
+from utils.auto_delete import send_message_and_delete
 from managers.state_manager import state_manager
 
 logger = logging.getLogger(__name__)

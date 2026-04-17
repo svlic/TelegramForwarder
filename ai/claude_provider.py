@@ -48,7 +48,7 @@ class ClaudeProvider(BaseAIProvider):
                 messages.append({"role": "system", "content": prompt})
             
             # 如果有图片，需要添加到消息中
-            if images and len(images) > 0:
+            if images:
                 # 构建包含图片的内容列表
                 content = []
                 

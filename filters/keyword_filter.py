@@ -1,8 +1,6 @@
 import logging
-import re
-from utils.common import get_sender_info,check_keywords
+from utils.common import check_keywords
 from filters.base_filter import BaseFilter
-from enums.enums import ForwardMode
 
 logger = logging.getLogger(__name__)
 

@@ -86,7 +86,7 @@ class SummaryScheduler:
             return []
 
         parts = []
-        while len(text) > 0:
+        while text:
             # Strip any leading whitespace from the remaining text to prevent empty parts.
             text = text.lstrip()
             if not text:
@@ -198,7 +198,10 @@ class SummaryScheduler:
                             logger.info(f'规则 {rule_id} 当前批次添加了 {len(batch)} 条消息，总消息数: {len(messages)}')
 
                         # 更新offset为最后一条消息的ID
-                        current_offset = messages_batch[-1].id
+                        if messages_batch:
+                            current_offset = messages_batch[-1].id
+                        else:
+                            break
 
                         # 如果需要退出循环
                         if should_break:

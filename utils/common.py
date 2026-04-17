@@ -3,12 +3,10 @@ import os
 import sys
 import logging
 from telethon.tl.types import ChannelParticipantsAdmins
-from ai import get_ai_provider
 from enums.enums import ForwardMode
 from models.models import Chat, ForwardRule
 import re
-import telethon
-from utils.auto_delete import respond_and_delete,reply_and_delete,async_delete_user_message
+from utils.auto_delete import reply_and_delete
 from datetime import datetime, timedelta
 
 from utils.constants import AI_SETTINGS_TEXT,MEDIA_SETTINGS_TEXT

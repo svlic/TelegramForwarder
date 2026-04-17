@@ -60,8 +60,8 @@ for f in glob.glob(os.path.join(TEMP_DIR, '*')):
             os.remove(f)
         elif os.path.isdir(f):
             shutil.rmtree(f)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f'清理临时文件失败: {f}, 错误: {e}')
 
 
 # 创建客户端

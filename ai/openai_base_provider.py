@@ -61,7 +61,7 @@ class OpenAIBaseProvider(BaseAIProvider):
                 messages.append({"role": "system", "content": prompt})
 
             # 如果有图片，需要添加到消息中
-            if images and len(images) > 0:
+            if images:
                 # 创建包含文本和图片的内容数组
                 content = []
 

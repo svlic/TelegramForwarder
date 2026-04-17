@@ -74,7 +74,7 @@ class AIFilter(BaseFilter):
                         except Exception as e:
                             logger.error(f"读取文件到内存时出错: {str(e)}")
                             
-                    has_media_to_process = len(image_files) > 0
+                    has_media_to_process = bool(image_files)
                     logger.info(f"已加载 {len(image_files)} 个文件到内存")
                     
                 # 如果没有已下载的文件，但有媒体组消息，则直接下载到内存
@@ -108,7 +108,7 @@ class AIFilter(BaseFilter):
                             except Exception as e:
                                 logger.error(f"下载媒体组图片到内存时出错: {str(e)}")
                     
-                    has_media_to_process = len(image_files) > 0
+                    has_media_to_process = bool(image_files)
                     logger.info(f"共下载了 {len(image_files)} 张图片到内存")
                     
                 # 检查单条消息是否有媒体并下载到内存
@@ -259,7 +259,7 @@ async def _ai_handle(message: str, rule, image_files=None) -> str:
         
         # 处理图片上传 - 新版本，支持内存中的图片数据
         img_data = []
-        if rule.enable_ai_upload_image and image_files and len(image_files) > 0:
+        if rule.enable_ai_upload_image and image_files:
             # 检查图片是否已经是内存格式
             if isinstance(image_files[0], dict) and "data" in image_files[0] and "mime_type" in image_files[0]:
                 # 已经是内存格式，直接使用

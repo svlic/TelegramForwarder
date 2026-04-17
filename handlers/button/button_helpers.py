@@ -8,7 +8,6 @@ from utils.settings import load_summary_times, load_delay_times, load_max_media_
 from handlers.button.settings_manager import AI_SETTINGS, MEDIA_SETTINGS, OTHER_SETTINGS
 from utils.common import get_db_ops
 from models.models import get_db_session
-from sqlalchemy import text
 from models.models import ForwardRule
 
 SUMMARY_TIMES = load_summary_times()

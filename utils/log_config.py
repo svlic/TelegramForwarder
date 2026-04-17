@@ -1,6 +1,4 @@
-import os
 import logging
-from pathlib import Path
 from dotenv import load_dotenv
 
 def setup_logging():

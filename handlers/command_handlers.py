@@ -1691,7 +1691,7 @@ async def handle_add_all_command(event, command, parts):
             return
     else:
         # add_regex_all 命令使用简单分割，保持正则表达式的原始形式
-        if len(args_text.split()) > 0:
+        if args_text:
             keywords = args_text.split()
         else:
             keywords = [args_text]

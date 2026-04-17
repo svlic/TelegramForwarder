@@ -7,7 +7,7 @@ from handlers.button.callback.ai_callback import *
 from handlers.button.callback.media_callback import *
 from handlers.button.callback.other_callback import *
 import logging
-from utils.auto_delete import respond_and_delete,reply_and_delete
+from utils.auto_delete import respond_and_delete
 from utils.common import check_and_clean_chats
 from handlers.button.button_helpers import create_sync_rule_buttons,create_other_settings_buttons
 

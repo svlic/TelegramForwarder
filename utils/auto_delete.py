@@ -1,7 +1,5 @@
 import asyncio
-import os
 import logging
-from functools import wraps
 from utils.constants import BOT_MESSAGE_DELETE_TIMEOUT, USER_MESSAGE_DELETE_ENABLE
 logger = logging.getLogger(__name__)
 

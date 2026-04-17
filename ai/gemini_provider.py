@@ -98,7 +98,7 @@ class GeminiProvider(BaseAIProvider):
                 user_message = message
             
             # 检查是否有图片
-            if images and len(images) > 0:
+            if images:
                 try:
                     # 使用MultimodalContent添加图片
                     contents = []

@@ -4,12 +4,8 @@ import asyncio
 from utils.media import get_media_size
 from utils.constants import TEMP_DIR
 from filters.base_filter import BaseFilter
-from utils.media import get_max_media_size
-from enums.enums import PreviewMode
 from models.models import MediaTypes
 from models.models import get_db_session
-from sqlalchemy import text
-from utils.common import get_db_ops
 from enums.enums import AddMode
 logger = logging.getLogger(__name__)
 
@@ -135,7 +131,7 @@ class MediaFilter(BaseFilter):
             return True
 
         # 如果所有媒体都超限且不发送超限提醒，则设置不转发
-        if len(context.skipped_media) > 0 and len(context.media_group_messages) == 0 and not rule.is_send_over_media_size_message:
+        if context.skipped_media and len(context.media_group_messages) == 0 and not rule.is_send_over_media_size_message:
             # 检查是否允许文本通过
             if rule.media_allow_text:
                 logger.info('媒体超限但允许文本通过')
