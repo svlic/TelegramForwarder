@@ -1,37 +1,31 @@
 # ai/
 
 ## OVERVIEW
-AI提供商抽象层，支持多厂商API调用。
+仅支持用户指定的兼容 OpenAI API 接口。
 
 ## STRUCTURE
 ```
 ai/
-├── __init__.py           # get_ai_provider 入口
-├── base.py               # BaseAIProvider 抽象类
-├── openai_base_provider.py # OpenAI兼容基类
-├── openai_provider.py    # OpenAI
-├── claude_provider.py    # Anthropic Claude
-├── gemini_provider.py    # Google Gemini
-├── deepseek_provider.py  # DeepSeek
-├── qwen_provider.py      # 通义千问
-└── grok_provider.py      # xAI Grok
+├── __init__.py              # get_ai_provider 入口
+├── base.py                  # BaseAIProvider 抽象类
+└── openai_base_provider.py  # CustomOpenAIProvider 实现
 ```
 
 ## WHERE TO LOOK
 | Task | File | Notes |
 |------|------|-------|
-| 添加新提供商 | `base.py` | 继承BaseAIProvider |
+| AI处理逻辑 | `openai_base_provider.py` | CustomOpenAIProvider |
 | 获取提供商 | `__init__.py` | get_ai_provider(model) |
-| 模型配置 | `config/ai_models.json` | 自定义模型名 |
 
 ## CONVENTIONS
 - 所有Provider继承`BaseAIProvider`
 - 必须实现`process_message()`和`initialize()`
-- OpenAI兼容API继承`openai_base_provider.py`
-- API Key从环境变量读取
+- API Key 和 API Base 必须从环境变量配置
+- 不支持官方接口，只能用第三方兼容 OpenAI 的 API
 
 ## CODE MAP
 | Symbol | Type | Location | Role |
 |--------|------|----------|------|
 | `BaseAIProvider` | class | base.py | 抽象基类 |
+| `CustomOpenAIProvider` | class | openai_base_provider.py | 唯一Provider |
 | `get_ai_provider` | function | __init__.py | 工厂函数 |

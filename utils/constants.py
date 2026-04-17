@@ -18,29 +18,9 @@ AI_MODELS = [m.strip() for m in os.getenv('AI_MODELS', '').split(',') if m.strip
 DEFAULT_AI_PROMPT = '请尊重原意，保持原有格式不变，用简体中文重写下面的内容：'
 DEFAULT_SUMMARY_PROMPT = '请总结以下频道/群组24小时内的消息。'
 
-# OpenAI
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
-OPENAI_API_BASE = os.getenv('OPENAI_API_BASE', '')
-
-# Claude
-CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', '')
-CLAUDE_API_BASE = os.getenv('CLAUDE_API_BASE', '')
-
-# Gemini
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
-GEMINI_API_BASE = os.getenv('GEMINI_API_BASE', '')
-
-# DeepSeek
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY', '')
-DEEPSEEK_API_BASE = os.getenv('DEEPSEEK_API_BASE', '')
-
-# Qwen
-QWEN_API_KEY = os.getenv('QWEN_API_KEY', '')
-QWEN_API_BASE = os.getenv('QWEN_API_BASE', '')
-
-# Grok
-GROK_API_KEY = os.getenv('GROK_API_KEY', '')
-GROK_API_BASE = os.getenv('GROK_API_BASE', '')
+# 自定义 OpenAI 兼容接口
+CUSTOM_AI_API_KEY = os.getenv('CUSTOM_AI_API_KEY', '')
+CUSTOM_AI_API_BASE = os.getenv('CUSTOM_AI_API_BASE', '')
 
 ######### 可选配置 #########
 ADMINS = os.getenv('ADMINS', '')

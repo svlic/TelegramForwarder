@@ -278,29 +278,9 @@ docker compose up -d
 # AI 模型列表 (必填，逗号分隔)
 AI_MODELS=gpt-4o,claude-3-sonnet,gemini-2.0-flash
 
-# OpenAI API
-OPENAI_API_KEY=your_key
-OPENAI_API_BASE=  # 可选，自定义API地址
-
-# Claude API
-CLAUDE_API_KEY=your_key
-CLAUDE_API_BASE=  # 可选
-
-# Gemini API
-GEMINI_API_KEY=your_key
-GEMINI_API_BASE=  # 可选
-
-# DeepSeek API
-DEEPSEEK_API_KEY=your_key
-DEEPSEEK_API_BASE=  # 可选
-
-# Qwen API
-QWEN_API_KEY=your_key
-QWEN_API_BASE=  # 可选
-
-# Grok API
-GROK_API_KEY=your_key
-GROK_API_BASE=  # 可选
+# 自定义 OpenAI 兼容接口 (必填)
+CUSTOM_AI_API_KEY=your_key
+CUSTOM_AI_API_BASE=https://your-api-endpoint.com/v1
 ```
 
 > **注意**：AI 模型通过 `AI_MODELS` 环境变量配置，在设置界面中选择使用。
