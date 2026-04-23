@@ -1,5 +1,3 @@
-import copy
-
 class MessageContext:
     
     def __init__(self, client, event, chat_id, rule):
@@ -34,6 +32,3 @@ class MessageContext:
         self.errors = []
         self.forwarded_messages = []
         self.comment_link = None
-        
-    def clone(self):
-        return copy.deepcopy(self) 

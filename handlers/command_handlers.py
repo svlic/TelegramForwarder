@@ -1,23 +1,21 @@
-from sqlalchemy.exc import IntegrityError
-from telethon import Button
-from models.models import MediaTypes, MediaExtensions, get_db_session
-from enums.enums import AddMode, ForwardMode
-from models.models import Keyword, ReplaceRule, RuleSync
-from utils.common import *
-from utils.media import *
-from handlers.list_handlers import *
-from utils.constants import TEMP_DIR
-import traceback
-from sqlalchemy import inspect
-from version import VERSION, UPDATE_INFO
-import shlex
 import logging
 import os
+import traceback
+import shlex
 
-import models.models as models
-from utils.auto_delete import respond_and_delete,reply_and_delete,async_delete_user_message
-from utils.common import get_bot_client
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy import inspect
+from telethon import Button
+
+from enums.enums import AddMode, ForwardMode
+from models.models import Chat, ForwardRule, Keyword, ReplaceRule, RuleSync, MediaTypes, MediaExtensions, get_db_session
+from utils.constants import TEMP_DIR
+from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client
+from utils.auto_delete import respond_and_delete, reply_and_delete, async_delete_user_message
 from handlers.button.settings_manager import create_settings_text, create_buttons
+from handlers.list_handlers import show_list
+
+from version import VERSION, UPDATE_INFO
 
 logger = logging.getLogger(__name__)
 

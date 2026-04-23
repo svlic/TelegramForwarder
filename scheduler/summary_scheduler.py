@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timedelta
 import pytz
 import traceback
-from models.models import get_session, get_db_session, ForwardRule
+from models.models import get_db_session, ForwardRule
 import logging
 from telethon import TelegramClient, errors
 from ai import get_ai_provider

@@ -4,7 +4,7 @@ from utils.common import check_keywords
 from utils.common import get_main_module
 from ai import get_ai_provider
 from utils.constants import DEFAULT_AI_PROMPT, AI_PROCESS_TIMEOUT
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import asyncio
 import re
 import base64
@@ -329,7 +329,7 @@ async def _get_chat_messages(client, chat_id, minutes=None, count=None, delay_se
         if minutes:
             # 计算时间范围
             
-            end_time = datetime.now()
+            end_time = datetime.now(timezone.utc)
             start_time = end_time - timedelta(minutes=minutes)
             
             # 获取指定时间范围内的消息

@@ -14,6 +14,9 @@ def setup_logging():
     
     # 设置日志级别 - 默认使用INFO级别
     root_logger.setLevel(logging.INFO)
+
+    # Prevent duplicate handlers on repeated calls
+    root_logger.handlers.clear()
     
     # 创建一个处理器，用于将日志输出到控制台
     console_handler = logging.StreamHandler()

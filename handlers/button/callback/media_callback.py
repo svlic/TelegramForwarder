@@ -1,7 +1,7 @@
 import traceback
 
 from handlers.button.button_helpers import create_media_size_buttons,create_media_settings_buttons,create_media_types_buttons,create_media_extensions_buttons
-from models.models import ForwardRule, MediaTypes, RuleSync
+from models.models import ForwardRule, RuleSync
 import logging
 from utils.common import get_media_settings_text, get_db_ops
 
@@ -96,8 +96,7 @@ async def callback_toggle_media_type(event, rule_id, session, message, data):
         if len(parts) < 3:
             await event.answer("数据格式错误")
             return
-
-        action = parts[0]
+        _ = parts[0]
         rule_id = parts[1]
         media_type = parts[2]
         if media_type not in ['photo', 'document', 'video', 'audio', 'voice']:
@@ -191,8 +190,7 @@ async def callback_toggle_media_extension(event, rule_id, session, message, data
         if len(parts) < 3:
             await event.answer("数据格式错误")
             return
-
-        action = parts[0]
+        _ = parts[0]
         rule_id = parts[1]
         extension = parts[2]
 

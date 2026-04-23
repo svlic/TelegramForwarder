@@ -69,7 +69,7 @@ user_client = TelegramClient('./sessions/user', api_id, api_hash)
 bot_client = TelegramClient('./sessions/bot', api_id, api_hash)
 
 # 初始化数据库
-engine = init_db()
+init_db()
 
 
 async def start_clients():
@@ -81,12 +81,12 @@ async def start_clients():
         # 启动用户客户端
         await user_client.start(phone=phone_number)
         me_user = await user_client.get_me()
-        print(f'用户客户端已启动: {me_user.first_name} (@{me_user.username})')
+        logger.info(f'用户客户端已启动: {me_user.first_name} (@{me_user.username})')
 
         # 启动机器人客户端
         await bot_client.start(bot_token=bot_token)
         me_bot = await bot_client.get_me()
-        print(f'机器人客户端已启动: {me_bot.first_name} (@{me_bot.username})')
+        logger.info(f'机器人客户端已启动: {me_bot.first_name} (@{me_bot.username})')
 
         # 设置消息监听器
         await setup_listeners(user_client, bot_client)
@@ -310,6 +310,6 @@ if __name__ == '__main__':
     try:
         loop.run_until_complete(start_clients())
     except KeyboardInterrupt:
-        print("正在关闭客户端...")
+        logger.info("正在关闭客户端...")
     finally:
         loop.close()

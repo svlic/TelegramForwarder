@@ -32,6 +32,6 @@ async def get_max_media_size():
     """获取媒体文件大小上限"""
     max_media_size_str = os.getenv('MAX_MEDIA_SIZE')
     if not max_media_size_str:
-        logger.error('未设置 MAX_MEDIA_SIZE 环境变量')
-        raise ValueError('必须在 .env 文件中设置 MAX_MEDIA_SIZE')
+        logger.warning('未设置 MAX_MEDIA_SIZE 环境变量，使用默认值 100MB')
+        return 100 * 1024 * 1024  # 默认100MB
     return float(max_media_size_str) * 1024 * 1024  # 转换为字节，支持小数

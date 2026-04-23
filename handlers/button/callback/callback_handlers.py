@@ -3,13 +3,35 @@ from handlers.list_handlers import show_list
 from handlers.button.settings_manager import create_settings_text, create_buttons, RULE_SETTINGS, MEDIA_SETTINGS, AI_SETTINGS
 from models.models import Chat, ReplaceRule, Keyword,get_db_session, ForwardRule, RuleSync
 from telethon import Button
-from handlers.button.callback.ai_callback import *
-from handlers.button.callback.media_callback import *
-from handlers.button.callback.other_callback import *
+from handlers.button.callback.ai_callback import (
+    callback_ai_settings, callback_set_summary_time, callback_set_summary_prompt,
+    callback_set_ai_prompt, callback_time_page, callback_model_page,
+    callback_select_time, callback_select_model, callback_set_ai_model,
+    callback_cancel_set_model, callback_cancel_set_prompt,
+    callback_cancel_set_summary, callback_summary_now,
+)
+from handlers.button.callback.media_callback import (
+    callback_media_settings, callback_set_max_media_size, callback_select_max_media_size,
+    callback_set_media_types, callback_toggle_media_type, callback_set_media_extensions,
+    callback_media_extensions_page, callback_toggle_media_extension,
+    callback_toggle_media_allow_text, callback_toggle_media_caption_filter,
+)
+from handlers.button.callback.other_callback import (
+    callback_other_settings, callback_copy_rule, callback_perform_copy_rule,
+    callback_copy_keyword, callback_copy_replace, callback_perform_copy_keyword,
+    callback_perform_copy_replace, callback_clear_keyword, callback_clear_replace,
+    callback_delete_rule, callback_perform_clear_keyword, callback_perform_clear_replace,
+    callback_perform_delete_rule, callback_set_userinfo_template,
+    callback_set_time_template, callback_cancel_set_userinfo,
+    callback_cancel_set_time, callback_set_original_link_template,
+    callback_cancel_set_original_link, callback_toggle_reverse_blacklist,
+    callback_toggle_reverse_whitelist,
+)
 import logging
+import traceback
 from utils.auto_delete import respond_and_delete
-from utils.common import check_and_clean_chats
-from handlers.button.button_helpers import create_sync_rule_buttons,create_other_settings_buttons
+from utils.common import check_and_clean_chats, get_db_ops, get_ai_settings_text
+from handlers.button.button_helpers import create_sync_rule_buttons, create_other_settings_buttons, create_media_settings_buttons, create_ai_settings_buttons
 
 logger = logging.getLogger(__name__)
 

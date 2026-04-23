@@ -1,3 +1,4 @@
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from models.models import Keyword, ReplaceRule, ForwardRule, MediaTypes, MediaExtensions, RuleSync, get_db_session
 import logging
@@ -80,7 +81,8 @@ class DBOperations:
 
     async def sync_to_server(self,session,rule_id):
         """同步UFB配置"""
-        if self.ufb_client and os.getenv('UFB_ENABLED').lower() == 'true':
+        ufb_enabled = os.getenv('UFB_ENABLED', 'false')
+        if self.ufb_client and ufb_enabled.lower() == 'true':
             # 通过rule_id获取规则ufb是否开启
             rule = session.query(ForwardRule).filter(ForwardRule.id == rule_id).first()
             ufb_domain = rule.ufb_domain

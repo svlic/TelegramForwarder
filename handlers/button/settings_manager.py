@@ -527,7 +527,7 @@ async def create_buttons(rule):
             )
         ])
 
-        if UFB_ENABLED == 'true':
+        if UFB_ENABLED:
             buttons.append([
                 Button.inline(
                     f"☁️ UFB同步: {RULE_SETTINGS['is_ufb']['values'][rule.is_ufb]}",

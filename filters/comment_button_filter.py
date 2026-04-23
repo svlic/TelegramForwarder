@@ -4,7 +4,7 @@ import traceback
 from telethon import Button
 from filters.base_filter import BaseFilter
 from telethon.tl.functions.channels import GetFullChannelRequest
-from utils.common import get_main_module
+from utils.common import get_main_module, extract_channel_id_for_url
 from difflib import SequenceMatcher
 logger = logging.getLogger(__name__)
 
@@ -59,12 +59,8 @@ class CommentButtonFilter(BaseFilter):
                             break
                 
                 # 获取频道ID（去除前缀）
-                channel_id_str = str(channel_entity.id)
-                if channel_id_str.startswith('-100'):
-                    channel_id_str = channel_id_str[4:]
-                elif channel_id_str.startswith('100'):
-                    channel_id_str = channel_id_str[3:]
-                    
+                channel_id_str = extract_channel_id_for_url(channel_entity.id)
+                
                 logger.info(f"处理频道ID: {channel_id_str}")
                 
                 # 只处理频道消息

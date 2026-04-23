@@ -48,7 +48,7 @@ KEYWORDS_PER_PAGE = 6
 MODELS_PER_PAGE = 6
 
 # -- 定时任务 --
-CHAT_UPDATE_TIME = 3  # 聊天列表更新间隔 (小时)
+CHAT_UPDATE_TIME = '03:00'  # 聊天列表更新间隔
 DEFAULT_SUMMARY_TIME = '07:00'  # 默认总结时间
 
 # -- AI 总结批次 --

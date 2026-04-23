@@ -24,13 +24,13 @@ def normalize_channel_id(chat_id):
         return int(f'-100{chat_id_str}')
     return int(chat_id_str)
 
-def parse_telegram_id(id_str):
-    """Parse various Telegram ID formats from string"""
-    id_str = id_str.strip().replace('https://t.me/c/', '').replace('https://t.me/', '')
-    try:
-        return int(id_str)
-    except ValueError:
-        return None
+def extract_channel_id_for_url(chat_id):
+    """Extract pure channel ID for t.me/c/{id} URLs (strips -100 prefix)"""
+    normalized = normalize_channel_id(chat_id)
+    normalized_str = str(normalized)
+    if normalized_str.startswith('-100'):
+        return normalized_str[4:]
+    return normalized_str
 
 async def get_main_module():
     """获取 main 模块"""

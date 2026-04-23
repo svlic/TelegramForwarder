@@ -2,6 +2,7 @@ import logging
 import os
 import pytz
 from filters.base_filter import BaseFilter
+from utils.common import extract_channel_id_for_url
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,8 @@ class InfoFilter(BaseFilter):
                 message_id = getattr(message, 'id', None) if message else None
                 
                 if chat_id is not None and message_id is not None:
-                    original_link = f"https://t.me/c/{str(chat_id)[4:]}/{message_id}"
+                    channel_id_for_url = extract_channel_id_for_url(chat_id)
+                    original_link = f"https://t.me/c/{channel_id_for_url}/{message_id}"
                     
                     if hasattr(rule, 'original_link_template') and rule.original_link_template:
                         try:

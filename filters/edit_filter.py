@@ -41,7 +41,7 @@ class EditFilter(BaseFilter):
         
         if not isinstance(chat, Channel):
             logger.info(f"不是频道消息 (聊天类型: {type(chat).__name__})，跳过编辑")
-            return False
+            return True
             
         try:
             # 获取用户客户端
@@ -51,7 +51,7 @@ class EditFilter(BaseFilter):
             
             if not user_client:
                 logger.error("无法获取用户客户端，无法执行编辑操作")
-                return False
+                return True
             
             logger.debug("成功获取用户客户端")
                 
@@ -73,7 +73,7 @@ class EditFilter(BaseFilter):
             # 检查文本是否有变化
             if message_text == event.message.text:
                 logger.info("消息文本没有变化，跳过编辑")
-                return False
+                return True
             
             # 处理媒体组消息
             if context.is_media_group:
@@ -81,7 +81,7 @@ class EditFilter(BaseFilter):
                 # 尝试编辑媒体组中的每条消息
                 if not context.media_group_messages:
                     logger.warning("媒体组消息列表为空，无法编辑")
-                    return False
+                    return True
                     
                 for message in context.media_group_messages:
                     try:
@@ -104,7 +104,7 @@ class EditFilter(BaseFilter):
                             logger.debug(f"异常详情: {traceback.format_exc()}")
                         else:
                             logger.debug(f"媒体组消息 {message.id} 内容未修改，无需编辑")
-                return False
+                return True
             # 处理所有其他消息（包括单条媒体消息和纯文本消息）
             else:
                 try:
@@ -119,7 +119,7 @@ class EditFilter(BaseFilter):
                         link_preview=link_preview
                     )
                     logger.info(f"成功编辑消息 {event.message.id}")
-                    return False
+                    return True
                 except Exception as e:
                     error_details = str(e)
                     if "was not modified" not in error_details:
@@ -129,10 +129,10 @@ class EditFilter(BaseFilter):
                         logger.debug(f"异常详情: {traceback.format_exc()}")
                     else:
                         logger.debug(f"消息 {event.message.id} 内容未修改，无需编辑")
-                    return False
+                    return True
                 
         except Exception as e:
             logger.error(f"编辑过滤器处理出错: {str(e)}")
             logger.debug(f"异常详情: {traceback.format_exc()}")
             logger.debug(f"上下文信息 - 消息ID: {event.message.id}, 聊天ID: {event.chat_id}, 规则ID: {rule.id if hasattr(rule, 'id') else '未知'}")
-            return False 
+            return True 

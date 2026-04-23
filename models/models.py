@@ -163,6 +163,8 @@ def migrate_db(engine):
     
     # 获取当前数据库中所有表
     existing_tables = inspector.get_table_names()
+    forward_rules_columns = {column['name'] for column in inspector.get_columns('forward_rules')}
+    keyword_columns = {column['name'] for column in inspector.get_columns('keywords')}
     
     # 连接数据库
     connection = engine.connect()
@@ -221,14 +223,8 @@ def migrate_db(engine):
     except Exception as e:
         logging.error(f'迁移媒体类型数据时出错: {str(e)}')
     
-            
+             
 
-
-    # 检查forward_rules表的现有列
-    forward_rules_columns = {column['name'] for column in inspector.get_columns('forward_rules')}
-
-    # 检查Keyword表的现有列
-    keyword_columns = {column['name'] for column in inspector.get_columns('keywords')}
 
     # 需要添加的新列及其默认值
     forward_rules_new_columns = {

@@ -339,7 +339,7 @@ class MediaFilter(BaseFilter):
                         allowed = False
         except Exception as e:
             logger.error(f"检查媒体扩展名时出错: {str(e)}")
-            allowed = True  # 出错时默认允许
+            allowed = False  # 出错时默认拒绝，保障安全
 
         return allowed
 

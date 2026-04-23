@@ -4,7 +4,7 @@ import asyncio
 from filters.base_filter import BaseFilter
 from enums.enums import PreviewMode
 from telethon.errors import FloodWaitError
-from utils.common import normalize_channel_id
+from utils.common import normalize_channel_id, extract_channel_id_for_url
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +151,8 @@ class SenderFilter(BaseFilter):
                     caption_text += f"\n\n⚠️ 媒体文件 {name if name else '未命名文件'} ({size}MB) 超过大小限制"
 
                 if context.skipped_media:
-                    context.original_link = f"\n原始消息: https://t.me/c/{str(event.chat_id)[4:]}/{event.message.id}"
+                    channel_id_for_url = extract_channel_id_for_url(event.chat_id)
+                    context.original_link = f"\n原始消息: https://t.me/c/{channel_id_for_url}/{event.message.id}"
                 # 添加时间信息和原始链接
                 caption_text += context.time_info + context.original_link
 
@@ -207,7 +208,8 @@ class SenderFilter(BaseFilter):
             # 构建提示信息
             file_size = context.skipped_media[0][1]
             file_name = context.skipped_media[0][2]
-            original_link = f"\n原始消息: https://t.me/c/{str(event.chat_id)[4:]}/{event.message.id}"
+            channel_id_for_url = extract_channel_id_for_url(event.chat_id)
+            original_link = f"\n原始消息: https://t.me/c/{channel_id_for_url}/{event.message.id}"
 
             text_to_send = context.message_text or ''
             text_to_send += f"\n\n⚠️ 媒体文件 {file_name} ({file_size}MB) 超过大小限制"
