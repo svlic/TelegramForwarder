@@ -109,3 +109,5 @@ docker-compose run -it telegram-forwarder
 - Bot模式下编辑消息需是管理员
 - 媒体组处理需防重 (5分钟缓存)
 - AI Provider使用统一`BaseProvider`接口
+- EDIT模式必须尊重前置过滤器的`should_forward`、`media_blocked`和`skipped_media`状态，避免媒体过滤后仍修改源消息
+- 频道消息监听中，数据库查询保留`/bind`存储的原始chat ID；状态管理键可使用`normalize_channel_id()`规范化ID
