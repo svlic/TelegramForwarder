@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from managers.state_manager import state_manager
 from telethon.tl import types
 from filters.process import process_forward_rule
+from utils.common import normalize_channel_id
 
 # 加载环境变量
 load_dotenv()
@@ -74,21 +75,21 @@ async def handle_user_message(event, bot_client):
     
     chat = await event.get_chat()
     chat_id = abs(chat.id)
+    state_chat_id = chat_id
 
     # 检查是否频道消息
     if isinstance(event.chat, types.Channel) and state_manager.check_state():
         sender_id = os.getenv('USER_ID')
-        # 频道ID需要转为标准格式 -100XXXXXXXXX
-        chat_id = normalize_channel_id(chat_id)
+        state_chat_id = normalize_channel_id(chat_id)
     else:
         sender_id = event.sender_id
 
     # 检查用户状态
-    current_state, message, state_type = await state_manager.get_state(sender_id, chat_id)
+    current_state, message, state_type = await state_manager.get_state(sender_id, state_chat_id)
     
     if current_state:
         # 处理提示词设置
-        if await handle_prompt_setting(event, bot_client, sender_id, chat_id, current_state, message):
+        if await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message):
             return
 
     # 检查是否是媒体组消息
@@ -146,21 +147,22 @@ async def handle_bot_message(event, bot_client):
     try:
         chat = await event.get_chat()
         chat_id = abs(chat.id)
+        state_chat_id = chat_id
 
         # 检查是否频道消息
         if isinstance(event.chat, types.Channel) and state_manager.check_state():
             sender_id = os.getenv('USER_ID')
             # 频道ID需要转为标准格式 -100XXXXXXXXX
-            chat_id = normalize_channel_id(chat_id)
+            state_chat_id = normalize_channel_id(chat_id)
         else:
             sender_id = event.sender_id
 
         # 检查用户状态
-        current_state, message, state_type = await state_manager.get_state(sender_id, chat_id)
+        current_state, message, state_type = await state_manager.get_state(sender_id, state_chat_id)
 
         # 处理提示词设置
         if current_state:
-            await handle_prompt_setting(event, bot_client, sender_id, chat_id, current_state, message)
+            await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message)
             return
 
         # 如果没有特殊状态，则处理常规命令
