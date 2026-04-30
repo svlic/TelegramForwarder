@@ -6,12 +6,10 @@ import os
 import json
 import time
 from pathlib import Path
-from dotenv import load_dotenv
 from ufb.ufb_client import UFBClient
 from enums.enums import AddMode
 
 logger = logging.getLogger(__name__)
-load_dotenv()
 
 
 

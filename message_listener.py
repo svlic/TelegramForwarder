@@ -5,16 +5,12 @@ from handlers import bot_handler
 from handlers.prompt_handlers import handle_prompt_setting
 import asyncio
 import os
-from dotenv import load_dotenv
 from managers.state_manager import state_manager
 from telethon.tl import types
 from filters.process import process_forward_rule
 from utils.common import normalize_channel_id
 
 # 加载环境变量
-load_dotenv()
-
-# 获取logger
 logger = logging.getLogger(__name__)
 
 # 添加一个缓存来存储已处理的媒体组

@@ -1,14 +1,10 @@
 import logging
-from dotenv import load_dotenv
 
 def setup_logging():
     """
     配置日志系统，将所有日志输出到标准输出，
     由Docker收集并管理日志
     """
-    # 加载环境变量
-    load_dotenv()
-    
     # 创建根日志记录器
     root_logger = logging.getLogger()
     

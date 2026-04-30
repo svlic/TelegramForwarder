@@ -1,7 +1,6 @@
 import logging
 import os
 from telethon import events
-from dotenv import load_dotenv
 from version import WELCOME_TEXT
 
 from utils.constants import TEMP_DIR
@@ -28,8 +27,6 @@ logger = logging.getLogger(__name__)
 
 # 确保 temp 目录存在
 os.makedirs(TEMP_DIR, exist_ok=True)
-
-load_dotenv()
 
 
 async def handle_command(client, event):

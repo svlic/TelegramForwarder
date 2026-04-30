@@ -4,9 +4,7 @@ from sqlalchemy.orm import relationship, sessionmaker
 from enums.enums import ForwardMode, PreviewMode, MessageMode, AddMode, HandleMode
 import logging
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
 Base = declarative_base()
 
 class Chat(Base):
