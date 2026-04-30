@@ -181,7 +181,7 @@ class DBOperations:
                 item = rule.ufb_item
                 logger.info(f"item: {item}")
                 if not item:
-                    logger.error("未设置UFB_ITEM环境变量")
+                    logger.error("未设置规则 UFB item")
                     continue  # 跳过没有设置 item 的规则
 
                 # 在收到的配置中查找对应domain的配置
@@ -199,7 +199,7 @@ class DBOperations:
                         elif item == 'content_username':
                             keywords_config = user_config.get('contentPageUserKeywords', {})
                         else:
-                            logger.error(f"未设置UFB_ITEM环境变量")
+                            logger.error(f"未知的规则 UFB item: {item}")
                             continue
 
                         # 清空现有关键字

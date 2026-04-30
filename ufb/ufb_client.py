@@ -1,13 +1,12 @@
 import asyncio
 import json
-import os
 import time
 from pathlib import Path
 import websockets
 from typing import Optional, Dict, Any, Callable
 import logging
 
-from utils.common import get_main_module, get_db_ops
+from utils.common import get_db_ops
 
 logger = logging.getLogger(__name__)
 
