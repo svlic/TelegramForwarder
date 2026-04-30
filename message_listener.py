@@ -81,8 +81,8 @@ async def handle_user_message(event, bot_client):
         sender_id = event.sender_id
 
     # 检查用户状态
-    current_state, message, state_type = await state_manager.get_state(sender_id, state_chat_id)
-    
+    current_state, message, _state_type = await state_manager.get_state(sender_id, state_chat_id)
+
     if current_state:
         # 处理提示词设置
         if await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message):
@@ -154,7 +154,7 @@ async def handle_bot_message(event, bot_client):
             sender_id = event.sender_id
 
         # 检查用户状态
-        current_state, message, state_type = await state_manager.get_state(sender_id, state_chat_id)
+        current_state, message, _state_type = await state_manager.get_state(sender_id, state_chat_id)
 
         # 处理提示词设置
         if current_state:
