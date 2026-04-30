@@ -200,7 +200,7 @@ async def _ai_handle(message: str, rule, image_files=None) -> str:
             
         logger.info(f"使用规则配置的AI模型: {rule.ai_model}")
         
-        provider = await get_ai_provider(rule.ai_model)
+        provider = await get_ai_provider()
         
         if not rule.ai_prompt:
             rule.ai_prompt = DEFAULT_AI_PROMPT

@@ -20,20 +20,6 @@ werkzeug==3.1.3
 
 # AI Providers
 openai==1.63.2
-anthropic==0.46.0
-google-generativeai==0.8.4
-dashscope==1.22.1
-
-# Google (Gemini)
-google==3.0.0
-google-ai-generativelanguage==0.6.15
-google-api-core==2.24.1
-google-api-python-client==2.161.0
-google-auth==2.38.0
-google-auth-httplib2==0.2.0
-googleapis-common-protos==1.67.0
-grpcio==1.70.0
-grpcio-status==1.70.0
 
 # Config & Utils
 python-dotenv==1.0.0
