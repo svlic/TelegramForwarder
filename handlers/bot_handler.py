@@ -4,7 +4,7 @@ from telethon import events
 from version import WELCOME_TEXT
 
 from utils.constants import TEMP_DIR
-from utils.common import is_admin, get_user_id, get_main_module
+from utils.common import is_admin, get_user_id
 from handlers.command_handlers import (
     handle_bind_command, handle_settings_command, handle_switch_command,
     handle_add_command, handle_replace_command, handle_list_keyword_command,
@@ -156,7 +156,6 @@ async def callback_handler(event):
 
 async def send_welcome_message(client):
     """发送欢迎消息"""
-    main = await get_main_module()
     user_id = await get_user_id()
 
     # 发送新消息

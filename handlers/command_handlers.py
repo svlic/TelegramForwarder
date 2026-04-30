@@ -578,9 +578,6 @@ async def handle_remove_command(event, command, parts):
                 session.commit()
                 logger.info(f"成功删除 {removed_count} 个关键字")
 
-            # 重新获取更新后的列表
-            remaining_items = await db_ops.get_keywords(session, rule.id, rule_mode)
-
             # 显示删除结果
             if removed_count > 0:
                 await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
@@ -649,7 +646,6 @@ async def handle_remove_command(event, command, parts):
             await db_ops.delete_replace_rules(session, rule.id, ids_to_remove)
             session.commit()
 
-            remaining_items = await db_ops.get_replace_rules(session, rule.id)
             await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
             await reply_and_delete(event,f'已删除 {len(ids_to_remove)} 个替换规则')
 
@@ -1609,7 +1605,6 @@ async def handle_remove_all_keyword_command(event, command, parts):
 
         db_ops = await get_db_ops()
         total_removed = 0
-        total_not_found = 0
         removed_details = {}  # 用于记录每个规则删除的关键字
 
         # 从每个规则中删除关键字
@@ -1635,8 +1630,6 @@ async def handle_remove_all_keyword_command(event, command, parts):
             if rule_removed > 0:
                 removed_details[rule.id] = rule_removed_keywords
                 total_removed += rule_removed
-            else:
-                total_not_found += 1
 
         session.commit()
 
