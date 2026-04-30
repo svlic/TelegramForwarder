@@ -27,11 +27,7 @@ class MediaFilter(BaseFilter):
         # 确保临时目录存在
         os.makedirs(TEMP_DIR, exist_ok=True)
 
-        rule = context.rule
         event = context.event
-        client = context.client
-
-
 
         # 如果是媒体组消息
         if event.message.grouped_id:
@@ -45,7 +41,6 @@ class MediaFilter(BaseFilter):
         """处理媒体组消息"""
         event = context.event
         rule = context.rule
-        client = context.client
 
         logger.info(f'处理媒体组消息 组ID: {event.message.grouped_id}')
 

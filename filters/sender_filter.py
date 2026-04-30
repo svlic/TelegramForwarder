@@ -40,7 +40,7 @@ class SenderFilter(BaseFilter):
 
         # 预先获取目标聊天实体
         try:
-            entity = await client.get_entity(target_chat_id)
+            await client.get_entity(target_chat_id)
             logger.info(f'成功获取目标聊天实体: {target_chat.name} (ID: {target_chat_id})')
         except Exception as e:
             logger.warning(f'获取目标聊天实体时出错: {str(e)}')

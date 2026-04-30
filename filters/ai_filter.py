@@ -30,8 +30,6 @@ class AIFilter(BaseFilter):
             bool: 是否继续处理
         """
         rule = context.rule
-        message_text = context.message_text
-        original_message_text = context.original_message_text
         event = context.event
 
         try:
