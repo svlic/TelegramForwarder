@@ -46,11 +46,6 @@ async def get_main_module():
         spec.loader.exec_module(main)
         return main
 
-async def get_user_client():
-    """获取用户客户端"""
-    main = await get_main_module()
-    return main.user_client
-
 async def get_bot_client():
     """获取机器人客户端"""
     main = await get_main_module()

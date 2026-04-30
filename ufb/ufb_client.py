@@ -1,36 +1,15 @@
 import asyncio
-import importlib
 import json
 import os
-import sys
 import time
 from pathlib import Path
 import websockets
 from typing import Optional, Dict, Any, Callable
 import logging
 
+from utils.common import get_main_module, get_db_ops
+
 logger = logging.getLogger(__name__)
-
-async def get_main_module():
-    """获取 main 模块"""
-    try:
-        return sys.modules['__main__']
-    except KeyError:
-        # 如果找不到 main 模块，尝试手动导入
-        spec = importlib.util.spec_from_file_location(
-            "main",
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "main.py")
-        )
-        main = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(main)
-        return main
-
-async def get_db_ops():
-    """获取 main.py 中的 db_ops 实例"""
-    main = await get_main_module()
-    if main.db_ops is None:
-        main.db_ops = await main.init_db_ops()
-    return main.db_ops
 
 class UFBClient:
     def __init__(self, config_dir: str = "./ufb/config"):
