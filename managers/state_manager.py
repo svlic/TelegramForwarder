@@ -34,7 +34,7 @@ class StateManager:
         except asyncio.CancelledError:
             pass
     
-    async def get_state(self, user_id: int, chat_id: int) -> Union[Tuple[str, Optional[Message], Optional[str]], Tuple[None, None, None]]:
+    async def get_state(self, user_id: int, chat_id: int) -> Optional[Tuple[str, Optional[Message], Optional[str]]]:
         key = (user_id, chat_id)
         async with self._lock:
             state_data = self._states.get(key)

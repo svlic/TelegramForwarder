@@ -10,7 +10,7 @@ from telethon import Button
 from enums.enums import AddMode, ForwardMode
 from models.models import Chat, ForwardRule, Keyword, ReplaceRule, RuleSync, MediaTypes, MediaExtensions, get_db_session
 from utils.constants import TEMP_DIR
-from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client, normalize_channel_id, rule_belongs_to_current_chat, all_rules_belong_to_current_chat
+from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client, normalize_channel_id, rule_belongs_to_current_chat
 from managers.state_manager import state_manager
 from telethon.tl import types
 from utils.auto_delete import respond_and_delete, reply_and_delete, async_delete_user_message
@@ -220,7 +220,7 @@ async def handle_settings_command(event, command, parts):
                 return
 
             # 与callback_rule_settings函数相同的处理方式
-            settings_message = await event.respond(
+            await event.respond(
                 await create_settings_text(rule),
                 buttons=await create_buttons(rule)
             )

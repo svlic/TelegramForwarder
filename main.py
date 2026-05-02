@@ -2,7 +2,6 @@ from telethon import TelegramClient, types
 from telethon.tl.types import BotCommand
 from telethon.tl.functions.bots import SetBotCommandsRequest
 from models.models import init_db
-from dotenv import load_dotenv
 from message_listener import setup_listeners
 import os
 import asyncio
