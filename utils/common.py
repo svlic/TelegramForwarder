@@ -5,8 +5,10 @@ import logging
 from telethon.tl.types import ChannelParticipantsAdmins
 from enums.enums import ForwardMode
 from models.models import Chat, ForwardRule
+from typing import Iterable
 import re
 from utils.auto_delete import reply_and_delete
+from telethon.tl import types
 from datetime import datetime, timedelta
 
 from utils.constants import AI_SETTINGS_TEXT,MEDIA_SETTINGS_TEXT
@@ -151,6 +153,46 @@ async def get_all_rules(session, event):
         await reply_and_delete(event,'获取规则时出错，请检查日志')
         return None
 
+
+async def get_manageable_rules(session, event):
+    current_chat = await event.get_chat()
+    current_chat_id = normalize_channel_id(current_chat.id) if isinstance(current_chat, types.Channel) else current_chat.id
+
+    current_chat_db = session.query(Chat).filter(
+        Chat.telegram_chat_id == str(current_chat_id)
+    ).first()
+
+    if not current_chat_db:
+        return []
+
+    return session.query(ForwardRule).filter(
+        ForwardRule.target_chat_id == current_chat_db.id
+    ).all()
+
+
+async def get_manageable_rule_ids(session, event):
+    rules = await get_manageable_rules(session, event)
+    return {rule.id for rule in rules}
+
+
+async def rule_belongs_to_current_chat(session, event, rule_id):
+    try:
+        normalized_rule_id = int(rule_id)
+    except (TypeError, ValueError):
+        return False
+
+    manageable_rule_ids = await get_manageable_rule_ids(session, event)
+    return normalized_rule_id in manageable_rule_ids
+
+
+async def all_rules_belong_to_current_chat(session, event, rule_ids: Iterable[int]):
+    try:
+        normalized_rule_ids = {int(rule_id) for rule_id in rule_ids}
+    except (TypeError, ValueError):
+        return False
+
+    manageable_rule_ids = await get_manageable_rule_ids(session, event)
+    return normalized_rule_ids.issubset(manageable_rule_ids)
 
 
 # 添加缓存字典

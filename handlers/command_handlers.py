@@ -10,7 +10,9 @@ from telethon import Button
 from enums.enums import AddMode, ForwardMode
 from models.models import Chat, ForwardRule, Keyword, ReplaceRule, RuleSync, MediaTypes, MediaExtensions, get_db_session
 from utils.constants import TEMP_DIR
-from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client
+from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client, normalize_channel_id, rule_belongs_to_current_chat, all_rules_belong_to_current_chat
+from managers.state_manager import state_manager
+from telethon.tl import types
 from utils.auto_delete import respond_and_delete, reply_and_delete, async_delete_user_message
 from handlers.button.settings_manager import create_settings_text, create_buttons
 from handlers.list_handlers import show_list
@@ -18,6 +20,25 @@ from handlers.list_handlers import show_list
 from version import VERSION, UPDATE_INFO
 
 logger = logging.getLogger(__name__)
+
+CLEAR_ALL_CONFIRM_TEXT = 'CONFIRM CLEAR ALL'
+
+
+def get_state_identity(event):
+    chat_id = abs(event.chat_id)
+    if isinstance(event.chat, types.Channel):
+        return os.getenv('USER_ID'), normalize_channel_id(chat_id)
+    return event.sender_id, chat_id
+
+
+async def perform_clear_all(session):
+    replace_count = session.query(ReplaceRule).delete(synchronize_session=False)
+    keyword_count = session.query(Keyword).delete(synchronize_session=False)
+    rule_count = session.query(ForwardRule).delete(synchronize_session=False)
+    chat_count = session.query(Chat).delete(synchronize_session=False)
+    session.commit()
+    return chat_count, rule_count, keyword_count, replace_count
+
 
 async def handle_bind_command(event, client, parts):
     """处理 bind 命令"""
@@ -192,6 +213,10 @@ async def handle_settings_command(event, command, parts):
             rule = session.get(ForwardRule, rule_id)
             if not rule:
                 await reply_and_delete(event, f'找不到ID为 {rule_id} 的规则')
+                return
+
+            if not await rule_belongs_to_current_chat(session, event, rule_id):
+                await reply_and_delete(event, '您没有权限管理此规则')
                 return
 
             # 与callback_rule_settings函数相同的处理方式
@@ -651,29 +676,23 @@ async def handle_remove_command(event, command, parts):
 
 async def handle_clear_all_command(event):
     """处理 clear_all 命令"""
-    with get_db_session() as session:
-        # 删除所有替换规则
-        replace_count = session.query(ReplaceRule).delete(synchronize_session=False)
+    user_id, state_chat_id = get_state_identity(event)
+    await state_manager.set_state(
+        user_id,
+        state_chat_id,
+        'clear_all_confirm',
+        event.message,
+        state_type='clear_all'
+    )
 
-        # 删除所有关键字
-        keyword_count = session.query(Keyword).delete(synchronize_session=False)
-
-        # 删除所有转发规则
-        rule_count = session.query(ForwardRule).delete(synchronize_session=False)
-
-        # 删除所有聊天
-        chat_count = session.query(Chat).delete(synchronize_session=False)
-
-        session.commit()
-
-        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-        await reply_and_delete(event,
-            '已清空所有数据:\n'
-            f'- {chat_count} 个聊天\n'
-            f'- {rule_count} 条转发规则\n'
-            f'- {keyword_count} 个关键字\n'
-            f'- {replace_count} 条替换规则'
-        )
+    await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
+    await reply_and_delete(
+        event,
+        '⚠️ 该操作会删除所有聊天、规则、关键字和替换规则。\n'
+        f'请在 5 分钟内发送 `{CLEAR_ALL_CONFIRM_TEXT}` 确认执行。\n'
+        '发送其他内容将取消操作。',
+        parse_mode='markdown'
+    )
 
 
 async def handle_changelog_command(event):
@@ -1151,6 +1170,11 @@ async def handle_copy_keywords_command(event, command):
             await reply_and_delete(event,f'找不到规则ID: {source_rule_id}')
             return
 
+        if not await rule_belongs_to_current_chat(session, event, source_rule_id):
+            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
+            await reply_and_delete(event,'您没有权限访问源规则')
+            return
+
         # 复制关键字
         success_count = 0
         skip_count = 0
@@ -1212,6 +1236,11 @@ async def handle_copy_keywords_regex_command(event, command):
             await reply_and_delete(event,f'找不到规则ID: {source_rule_id}')
             return
 
+        if not await rule_belongs_to_current_chat(session, event, source_rule_id):
+            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
+            await reply_and_delete(event,'您没有权限访问源规则')
+            return
+
         # 复制正则关键字
         success_count = 0
         skip_count = 0
@@ -1271,6 +1300,11 @@ async def handle_copy_replace_command(event, command):
         if not source_rule:
             await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
             await reply_and_delete(event,f'找不到规则ID: {source_rule_id}')
+            return
+
+        if not await rule_belongs_to_current_chat(session, event, source_rule_id):
+            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
+            await reply_and_delete(event,'您没有权限访问源规则')
             return
 
         # 复制替换规则
@@ -1338,6 +1372,11 @@ async def handle_copy_rule_command(event, command):
             await reply_and_delete(event,f'找不到源规则ID: {source_rule_id}')
             return
 
+        if not await rule_belongs_to_current_chat(session, event, source_rule_id):
+            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
+            await reply_and_delete(event,'您没有权限访问源规则')
+            return
+
         # 获取目标规则
         if use_current_rule:
             # 获取当前规则
@@ -1346,11 +1385,15 @@ async def handle_copy_rule_command(event, command):
                 return
             target_rule, source_chat = rule_info
         else:
-            # 使用指定的目标规则ID
             target_rule = session.get(ForwardRule, target_rule_id)
             if not target_rule:
                 await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
                 await reply_and_delete(event,f'找不到目标规则ID: {target_rule_id}')
+                return
+
+            if not await rule_belongs_to_current_chat(session, event, target_rule_id):
+                await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
+                await reply_and_delete(event,'您没有权限访问目标规则')
                 return
 
         if source_rule.id == target_rule.id:
@@ -1898,6 +1941,10 @@ async def handle_delete_rule_command(event, command, parts):
             rule = session.get(ForwardRule, rule_id)
             if not rule:
                 not_found_ids.append(rule_id)
+                continue
+
+            if not await rule_belongs_to_current_chat(session, event, rule_id):
+                failed_ids.append(rule_id)
                 continue
 
             try:

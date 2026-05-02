@@ -3,12 +3,14 @@ from models.models import get_db_session, Chat, ForwardRule
 import logging
 from handlers import bot_handler
 from handlers.prompt_handlers import handle_prompt_setting
+from handlers.command_handlers import perform_clear_all, CLEAR_ALL_CONFIRM_TEXT
 import asyncio
 import os
 from managers.state_manager import state_manager
 from telethon.tl import types
 from filters.process import process_forward_rule
 from utils.common import normalize_channel_id
+from utils.auto_delete import async_delete_user_message, reply_and_delete
 
 # 加载环境变量
 logger = logging.getLogger(__name__)
@@ -19,6 +21,35 @@ PROCESSED_GROUPS = set()
 _PROCESSED_GROUPS_LOCK = asyncio.Lock()
 
 BOT_ID = None
+
+
+async def handle_clear_all_confirmation(event, sender_id, state_chat_id):
+    await state_manager.clear_state(sender_id, state_chat_id)
+    await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
+
+    if (event.raw_text or '').strip() != CLEAR_ALL_CONFIRM_TEXT:
+        logger.info('clear_all 已取消，确认文本不匹配')
+        await reply_and_delete(event, '已取消 clear_all 操作')
+        return True
+
+    with get_db_session() as session:
+        chat_count, rule_count, keyword_count, replace_count = await perform_clear_all(session)
+
+    logger.warning(
+        'clear_all executed by sender=%s chat=%s',
+        sender_id,
+        state_chat_id,
+    )
+    await reply_and_delete(
+        event,
+        '已清空所有数据:\n'
+        f'- {chat_count} 个聊天\n'
+        f'- {rule_count} 条转发规则\n'
+        f'- {keyword_count} 个关键字\n'
+        f'- {replace_count} 条替换规则'
+    )
+    return True
+
 
 async def setup_listeners(user_client, bot_client):
     """
@@ -86,6 +117,10 @@ async def handle_user_message(event, bot_client):
     if current_state:
         # 处理提示词设置
         if await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message):
+            return
+
+        if current_state == 'clear_all_confirm':
+            await handle_clear_all_confirmation(event, sender_id, state_chat_id)
             return
 
     # 检查是否是媒体组消息
@@ -158,8 +193,12 @@ async def handle_bot_message(event, bot_client):
 
         # 处理提示词设置
         if current_state:
-            await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message)
-            return
+            if await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message):
+                return
+
+            if current_state == 'clear_all_confirm':
+                await handle_clear_all_confirmation(event, sender_id, state_chat_id)
+                return
 
         # 如果没有特殊状态，则处理常规命令
         await bot_handler.handle_command(bot_client, event)

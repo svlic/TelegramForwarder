@@ -10,7 +10,7 @@ from models.models import get_db_session
 from telethon import Button
 from sqlalchemy import inspect
 from utils.constants import RULES_PER_PAGE
-from utils.common import check_and_clean_chats, is_admin
+from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat
 from utils.auto_delete import send_message_and_delete
 from managers.state_manager import state_manager
 
@@ -39,8 +39,7 @@ async def callback_copy_rule(event, rule_id, session, message, data):
         if ':' in str(rule_id):
             source_rule_id = str(rule_id).split(':')[0]
 
-        # 创建规则选择按钮
-        buttons = await create_copy_rule_buttons(source_rule_id, page)
+        buttons = await create_copy_rule_buttons(event, source_rule_id, page)
         await event.edit("请选择要将当前规则复制到的目标规则：", buttons=buttons)
     except Exception as e:
         logger.error(f"显示复制规则选择界面时出错: {str(e)}")
@@ -49,7 +48,7 @@ async def callback_copy_rule(event, rule_id, session, message, data):
 
     return
 
-async def create_copy_rule_buttons(rule_id, page=0):
+async def create_copy_rule_buttons(event, rule_id, page=0):
     """创建复制规则按钮列表
 
     Args:
@@ -59,11 +58,8 @@ async def create_copy_rule_buttons(rule_id, page=0):
     Returns:
         按钮列表
     """
-    # 设置分页参数
-
     buttons = []
     with get_db_session() as session:
-        # 获取当前规则
         if ':' in str(rule_id):
             parts = str(rule_id).split(':')
             source_rule_id = int(parts[0])
@@ -76,10 +72,10 @@ async def create_copy_rule_buttons(rule_id, page=0):
             buttons.append([Button.inline('关闭', 'close_settings')])
             return buttons
 
-        # 获取所有规则（除了当前规则）
-        all_rules = session.query(ForwardRule).filter(
-            ForwardRule.id != source_rule_id
-        ).all()
+        all_rules = [
+            rule for rule in await get_manageable_rules(session, event)
+            if rule.id != source_rule_id
+        ]
 
         # 计算分页
         total_rules = len(all_rules)
@@ -156,7 +152,12 @@ async def callback_perform_copy_rule(event, rule_id_data, session, message, data
         source_rule_id = int(parts[0])
         target_rule_id = int(parts[1])
 
+        if not await all_rules_belong_to_current_chat(session, event, [source_rule_id, target_rule_id]):
+            await event.answer('不能操作不属于当前聊天的规则')
+            return
+
         # 获取源规则和目标规则
+
         source_rule = session.get(ForwardRule, source_rule_id)
         target_rule = session.get(ForwardRule, target_rule_id)
 
@@ -399,6 +400,10 @@ async def callback_perform_copy_keyword(event, rule_id_data, session, message, d
         if source_rule_id is None or target_rule_id is None:
             return
 
+        if not await all_rules_belong_to_current_chat(session, event, [source_rule_id, target_rule_id]):
+            await event.answer('不能操作不属于当前聊天的规则')
+            return
+
         # 获取源规则和目标规则
         source_rule, target_rule = await get_rules(event, session, source_rule_id, target_rule_id)
         if not source_rule or not target_rule:
@@ -479,6 +484,10 @@ async def callback_perform_copy_replace(event, rule_id_data, session, message, d
         if source_rule_id is None or target_rule_id is None:
             return
 
+        if not await all_rules_belong_to_current_chat(session, event, [source_rule_id, target_rule_id]):
+            await event.answer('不能操作不属于当前聊天的规则')
+            return
+
         # 获取源规则和目标规则
         source_rule, target_rule = await get_rules(event, session, source_rule_id, target_rule_id)
         if not source_rule or not target_rule:
@@ -547,10 +556,10 @@ async def show_rule_selection(event, rule_id, data, title, callback_action):
         source_rule_id = str(rule_id).split(':')[0]
 
     # 创建规则选择按钮
-    buttons = await create_rule_selection_buttons(source_rule_id, page, callback_action)
+    buttons = await create_rule_selection_buttons(event, source_rule_id, page, callback_action)
     await event.edit(title, buttons=buttons)
 
-async def create_rule_selection_buttons(rule_id, page=0, callback_action="perform_copy_rule"):
+async def create_rule_selection_buttons(event, rule_id, page=0, callback_action="perform_copy_rule"):
     """创建规则选择按钮的通用函数
 
     Args:
@@ -561,11 +570,8 @@ async def create_rule_selection_buttons(rule_id, page=0, callback_action="perfor
     Returns:
         按钮列表
     """
-    # 设置分页参数
-
     buttons = []
     with get_db_session() as session:
-        # 获取当前规则
         if ':' in str(rule_id):
             parts = str(rule_id).split(':')
             source_rule_id = int(parts[0])
@@ -578,10 +584,10 @@ async def create_rule_selection_buttons(rule_id, page=0, callback_action="perfor
             buttons.append([Button.inline('关闭', 'close_settings')])
             return buttons
 
-        # 获取所有规则（除了当前规则）
-        all_rules = session.query(ForwardRule).filter(
-            ForwardRule.id != source_rule_id
-        ).all()
+        all_rules = [
+            rule for rule in await get_manageable_rules(session, event)
+            if rule.id != source_rule_id
+        ]
 
         # 计算分页
         total_rules = len(all_rules)
@@ -741,17 +747,15 @@ async def callback_clear_keyword(event, rule_id, session, message, data):
         current_callback_data = f"perform_clear_keyword:{current_rule.id}"
         buttons.append([Button.inline(current_button_text, current_callback_data)])
 
-        # 检查是否有其他规则
-        other_rules = session.query(ForwardRule).filter(
-            ForwardRule.id != current_rule.id
-        ).count()
+        manageable_rules = await get_manageable_rules(session, event)
+        other_rules = sum(1 for rule in manageable_rules if rule.id != current_rule.id)
 
         if other_rules > 0:
             # 分隔符
             buttons.append([Button.inline("---------", "noop")])
 
             # 添加其他规则按钮
-            other_buttons = await create_rule_selection_buttons(rule_id, page, "perform_clear_keyword")
+            other_buttons = await create_rule_selection_buttons(event, rule_id, page, "perform_clear_keyword")
 
             # 将所有其他规则按钮添加到buttons中
             buttons.extend(other_buttons)
@@ -794,17 +798,15 @@ async def callback_clear_replace(event, rule_id, session, message, data):
         current_callback_data = f"perform_clear_replace:{current_rule.id}"
         buttons.append([Button.inline(current_button_text, current_callback_data)])
 
-        # 检查是否有其他规则
-        other_rules = session.query(ForwardRule).filter(
-            ForwardRule.id != current_rule.id
-        ).count()
+        manageable_rules = await get_manageable_rules(session, event)
+        other_rules = sum(1 for rule in manageable_rules if rule.id != current_rule.id)
 
         if other_rules > 0:
             # 分隔符
             buttons.append([Button.inline("---------", "noop")])
 
             # 添加其他规则按钮
-            other_buttons = await create_rule_selection_buttons(rule_id, page, "perform_clear_replace")
+            other_buttons = await create_rule_selection_buttons(event, rule_id, page, "perform_clear_replace")
 
             # 将所有其他规则按钮添加到buttons中
             buttons.extend(other_buttons)
@@ -851,17 +853,15 @@ async def callback_delete_rule(event, rule_id, session, message, data):
         current_callback_data = f"perform_delete_rule:{current_rule.id}"
         buttons.append([Button.inline(current_button_text, current_callback_data)])
 
-        # 检查是否有其他规则
-        other_rules = session.query(ForwardRule).filter(
-            ForwardRule.id != current_rule.id
-        ).count()
+        manageable_rules = await get_manageable_rules(session, event)
+        other_rules = sum(1 for rule in manageable_rules if rule.id != current_rule.id)
 
         if other_rules > 0:
             # 分隔符
             buttons.append([Button.inline("---------", "noop")])
 
             # 添加其他规则按钮
-            other_buttons = await create_rule_selection_buttons(rule_id, page, "perform_delete_rule")
+            other_buttons = await create_rule_selection_buttons(event, rule_id, page, "perform_delete_rule")
 
             # 将所有其他规则按钮添加到buttons中
             buttons.extend(other_buttons)
@@ -895,6 +895,10 @@ async def callback_perform_clear_keyword(event, rule_id_data, session, message, 
         else:
             # 单个规则ID的情况（当前规则）
             rule_id = int(rule_id_data)
+
+        if not await rule_belongs_to_current_chat(session, event, rule_id):
+            await event.answer('不能操作不属于当前聊天的规则')
+            return
 
         # 获取规则
         rule = session.get(ForwardRule, rule_id)
@@ -958,6 +962,10 @@ async def callback_perform_clear_replace(event, rule_id_data, session, message, 
         else:
             # 单个规则ID的情况（当前规则）
             rule_id = int(rule_id_data)
+
+        if not await rule_belongs_to_current_chat(session, event, rule_id):
+            await event.answer('不能操作不属于当前聊天的规则')
+            return
 
         # 获取规则
         rule = session.get(ForwardRule, rule_id)
@@ -1025,6 +1033,10 @@ async def callback_perform_delete_rule(event, rule_id_data, session, message, da
         else:
             # 单个规则ID的情况（当前规则）
             rule_id = int(rule_id_data)
+
+        if not await rule_belongs_to_current_chat(session, event, rule_id):
+            await event.answer('不能操作不属于当前聊天的规则')
+            return
 
         # 获取规则
         rule = session.get(ForwardRule, rule_id)

@@ -30,7 +30,25 @@ from handlers.button.callback.other_callback import (
 import logging
 import traceback
 from utils.auto_delete import respond_and_delete
-from utils.common import check_and_clean_chats, get_db_ops, get_ai_settings_text
+from utils.common import check_and_clean_chats, get_db_ops, get_ai_settings_text, all_rules_belong_to_current_chat, rule_belongs_to_current_chat
+
+
+RULE_CALLBACK_ACTIONS = {
+    'rule_settings', 'toggle_current', 'set_sync_rule', 'set_summary_time', 'set_delay_time',
+    'select_delay_time', 'set_summary_prompt', 'set_ai_prompt', 'ai_settings', 'select_time',
+    'select_model', 'set_ai_model', 'cancel_set_model', 'cancel_set_prompt', 'cancel_set_summary',
+    'summary_now', 'select_max_media_size', 'set_max_media_size', 'media_settings', 'set_media_types',
+    'toggle_media_type', 'set_media_extensions', 'toggle_media_extension', 'toggle_media_allow_text',
+    'toggle_media_caption_filter', 'other_settings', 'copy_rule', 'copy_keyword', 'copy_replace',
+    'clear_keyword', 'clear_replace', 'delete_rule', 'set_userinfo_template', 'set_time_template',
+    'set_original_link_template', 'cancel_set_userinfo', 'cancel_set_time', 'cancel_set_original_link',
+    'toggle_reverse_blacklist', 'toggle_reverse_whitelist'
+}
+
+MULTI_RULE_CALLBACK_ACTIONS = {
+    'perform_copy_rule', 'perform_copy_keyword', 'perform_copy_replace',
+    'toggle_rule_sync', 'perform_clear_keyword', 'perform_clear_replace', 'perform_delete_rule'
+}
 from handlers.button.button_helpers import create_sync_rule_buttons, create_other_settings_buttons, create_media_settings_buttons, create_ai_settings_buttons
 
 logger = logging.getLogger(__name__)
@@ -573,18 +591,25 @@ async def handle_callback(event):
         data = event.data.decode()
         logger.info(f'收到回调数据: {data}')
 
-        # 解析回调数据
         parts = data.split(':')
         action = parts[0]
         rule_id = ':'.join(parts[1:]) if len(parts) > 1 else None
         logger.info(f'解析回调数据: action={action}, rule_id={rule_id}')
 
-        # 获取消息对象
         message = await event.get_message()
 
-        # 使用会话
         with get_db_session() as session:
-            # 获取对应的处理器
+            if action in RULE_CALLBACK_ACTIONS:
+                if not await rule_belongs_to_current_chat(session, event, rule_id):
+                    await event.answer('不能操作不属于当前聊天的规则')
+                    return
+
+            if action in MULTI_RULE_CALLBACK_ACTIONS:
+                rule_ids = [part for part in rule_id.split(':') if part]
+                if not await all_rules_belong_to_current_chat(session, event, rule_ids):
+                    await event.answer('不能操作不属于当前聊天的规则')
+                    return
+
             handler = CALLBACK_HANDLERS.get(action)
             if handler:
                 logger.info(f'找到对应的处理器: {handler}')
@@ -592,23 +617,29 @@ async def handle_callback(event):
             else:
                 logger.info(f'未找到对应的处理器,尝试处理规则设置切换: {action}')
 
-                # 尝试在RULE_SETTINGS中查找
                 for field_name, config in RULE_SETTINGS.items():
                     if action == config['toggle_action']:
+                        if not await rule_belongs_to_current_chat(session, event, rule_id):
+                            await event.answer('不能操作不属于当前聊天的规则')
+                            return
                         success = await update_rule_setting(event, rule_id, session, message, field_name, config, 'rule')
                         if success:
                             return
 
-                # 尝试在MEDIA_SETTINGS中查找
                 for field_name, config in MEDIA_SETTINGS.items():
                     if action == config['toggle_action']:
+                        if not await rule_belongs_to_current_chat(session, event, rule_id):
+                            await event.answer('不能操作不属于当前聊天的规则')
+                            return
                         success = await update_rule_setting(event, rule_id, session, message, field_name, config, 'media')
                         if success:
                             return
 
-                # 尝试在AI_SETTINGS中查找
                 for field_name, config in AI_SETTINGS.items():
                     if action == config['toggle_action']:
+                        if not await rule_belongs_to_current_chat(session, event, rule_id):
+                            await event.answer('不能操作不属于当前聊天的规则')
+                            return
                         success = await update_rule_setting(event, rule_id, session, message, field_name, config, 'ai')
                         if success:
                             return
