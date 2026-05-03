@@ -105,4 +105,4 @@ class CustomOpenAIProvider(BaseAIProvider):
 
         except Exception as e:
             logger.error(f"{self.env_prefix} API 调用失败: {str(e)}", exc_info=True)
-            return f"AI处理失败: {str(e)}"
+            raise

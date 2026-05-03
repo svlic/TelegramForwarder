@@ -10,6 +10,7 @@ import re
 from utils.auto_delete import reply_and_delete
 from telethon.tl import types
 from datetime import datetime, timedelta
+import asyncio
 
 from utils.constants import AI_SETTINGS_TEXT,MEDIA_SETTINGS_TEXT
 
@@ -197,6 +198,7 @@ async def all_rules_belong_to_current_chat(session, event, rule_ids: Iterable[in
 
 # 添加缓存字典
 _admin_cache = {}
+_admin_cache_lock = asyncio.Lock()
 _CACHE_DURATION = timedelta(minutes=30)  # 缓存30分钟
 
 
@@ -205,26 +207,24 @@ async def get_channel_admins(client, chat_id):
     """获取频道管理员列表，带缓存机制"""
     current_time = datetime.now()
 
-    # 检查缓存是否存在且未过期
-    if chat_id in _admin_cache:
-        cache_data = _admin_cache[chat_id]
-        if current_time - cache_data['timestamp'] < _CACHE_DURATION:
-            return cache_data['admin_ids']
+    async with _admin_cache_lock:
+        if chat_id in _admin_cache:
+            cache_data = _admin_cache[chat_id]
+            if current_time - cache_data['timestamp'] < _CACHE_DURATION:
+                return cache_data['admin_ids'].copy()
 
-    # 缓存不存在或已过期，重新获取管理员列表
-    try:
-        admins = await client.get_participants(chat_id, filter=ChannelParticipantsAdmins)
-        admin_ids = [admin.id for admin in admins]
+        try:
+            admins = await client.get_participants(chat_id, filter=ChannelParticipantsAdmins)
+            admin_ids = [admin.id for admin in admins]
 
-        # 更新缓存
-        _admin_cache[chat_id] = {
-            'admin_ids': admin_ids,
-            'timestamp': current_time
-        }
-        return admin_ids
-    except Exception as e:
-        logger.error(f'获取频道管理员列表失败: {str(e)}')
-        return None
+            _admin_cache[chat_id] = {
+                'admin_ids': admin_ids,
+                'timestamp': current_time
+            }
+            return admin_ids
+        except Exception as e:
+            logger.error(f'获取频道管理员列表失败: {str(e)}')
+            return None
 
 async def is_admin(event):
     """检查用户是否为频道/群组管理员
