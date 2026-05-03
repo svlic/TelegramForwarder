@@ -224,8 +224,8 @@ class MediaFilter(BaseFilter):
                         return True  # 跳过后续的媒体下载
                     else:
                         context.should_forward = False
-                context.skipped_media.append((event.message, file_size, file_name))
-                return True  # 不论如何都跳过后续的媒体下载
+                        context.skipped_media.append((event.message, file_size, file_name))
+                return True  # 跳过后续的媒体下载
             else:
                 try:
                     # 下载媒体文件
