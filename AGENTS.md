@@ -43,10 +43,10 @@ TelegramForwarder v1.7.2 - Telegram消息转发机器人，支持关键词过滤
 
 ## FILTER FLOW (执行顺序)
 ```
-消息 → init_filter → keyword_filter → replace_filter →
-ai_filter → media_filter → reply_filter → sender_filter →
-comment_button_filter → info_filter → delay_filter →
-edit_filter
+消息 → init_filter → delay_filter → keyword_filter →
+replace_filter → media_filter → ai_filter → info_filter →
+comment_button_filter → edit_filter → sender_filter →
+reply_filter
 ```
 
 ## CONVENTIONS
@@ -111,3 +111,4 @@ docker-compose run -it telegram-forwarder
 - AI Provider使用统一`BaseProvider`接口
 - EDIT模式必须尊重前置过滤器的`should_forward`、`media_blocked`和`skipped_media`状态，避免媒体过滤后仍修改源消息
 - 频道消息监听中，数据库查询保留`/bind`存储的原始chat ID；状态管理键可使用`normalize_channel_id()`规范化ID
+- 读写`StateManager`时统一使用`utils.common.get_state_identity(event)`，避免频道场景 callback 与 listener 的 `(user_id, chat_id)` key 不一致
