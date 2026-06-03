@@ -1,6 +1,7 @@
 from telethon import TelegramClient, types
 from telethon.tl.types import BotCommand
 from telethon.tl.functions.bots import SetBotCommandsRequest
+from dotenv import load_dotenv
 from models.models import init_db
 from message_listener import setup_listeners
 import os

@@ -61,8 +61,6 @@ async def callback_select_max_media_size(event, rule_id, session, message, data)
                     session.commit()
                     logger.info("所有同步媒体大小更改已提交")
 
-                message = await event.get_message()
-
                 await event.edit("媒体设置：",buttons=await create_media_settings_buttons(rule))
                 await event.answer(f"已设置最大媒体大小为: {size}MB")
                 logger.info("界面更新完成")
