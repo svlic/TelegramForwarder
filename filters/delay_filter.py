@@ -63,7 +63,31 @@ class DelayFilter(BaseFilter):
 
                 if updated_message:
                     updated_text = getattr(updated_message, "text", "")
-                    
+
+                    # 如果是媒体组，重新获取完整媒体组
+                    if updated_message.grouped_id:
+                        logger.info(f"[规则ID:{rule.id}] 消息属于媒体组，正在重新获取完整媒体组...")
+                        media_group_messages = []
+                        async for message in client.iter_messages(
+                            chat_id,
+                            limit=20,
+                            min_id=updated_message.id - 10,
+                            max_id=updated_message.id + 10
+                        ):
+                            if message.grouped_id == updated_message.grouped_id:
+                                media_group_messages.append(message)
+
+                        # 找到主消息（带text的最早的）
+                        primary_message = updated_message
+                        for message in media_group_messages:
+                            if message.text and (not primary_message.text or message.id < primary_message.id):
+                                primary_message = message
+
+                        context.primary_message = primary_message
+                        context.media_group_messages = media_group_messages
+                        updated_text = primary_message.text or ""
+                        logger.info(f"[规则ID:{rule.id}] 已更新媒体组主消息，主消息ID: {primary_message.id}, 共 {len(media_group_messages)} 条消息")
+
                     # 不管消息内容是否有变化，都更新上下文中的所有相关字段
                     logger.info(f"[规则ID:{rule.id}] 正在更新上下文中的消息数据...")
                     

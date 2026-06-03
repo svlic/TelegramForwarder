@@ -89,8 +89,8 @@ class EditFilter(BaseFilter):
                     
                 for message in context.media_group_messages:
                     try:
-                        # 只在第一条消息上添加文本
-                        text_to_edit = message_text if message.id == event.message.id else ""
+                        primary_id = context.primary_message.id if context.primary_message else event.message.id
+                        text_to_edit = message_text if message.id == primary_id else ""
                         logger.debug(f"尝试编辑媒体组消息 {message.id}, 媒体类型: {type(message.media).__name__ if message.media else '无媒体'}")
                         
                         await user_client.edit_message(

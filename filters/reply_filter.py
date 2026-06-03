@@ -26,7 +26,7 @@ class ReplyFilter(BaseFilter):
                 return True
                 
             # 只处理媒体组消息
-            if not context.is_media_group:
+            if not context.is_media_group or not context.forwarded_messages:
                 return True
                 
             # 检查是否有评论区链接和已转发的消息
