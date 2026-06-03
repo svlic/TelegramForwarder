@@ -177,8 +177,20 @@ class SenderFilter(BaseFilter):
 
                 logger.info(f'媒体组消息已发送，保存了 {len(context.forwarded_messages)} 条已转发消息')
             else:
-                # 所有媒体都被屏蔽（media_blocked=True），检查是否需要发送纯文本
-                if context.message_text:
+                if context.skipped_media and rule.is_send_over_media_size_message:
+                    logger.info('媒体组所有媒体超限且开启提醒，发送超限提示')
+                    caption_text = context.sender_info + (context.message_text or '')
+                    for _message, size, name in context.skipped_media:
+                        caption_text += f"\n\n媒体文件 {name if name else '未命名文件'} ({size}MB) 超过大小限制"
+                    caption_text += context.time_info + context.original_link
+                    await client.send_message(
+                        target_chat_id,
+                        caption_text,
+                        parse_mode=parse_mode,
+                        link_preview=True,
+                        buttons=context.buttons
+                    )
+                elif context.message_text:
                     logger.info('媒体组所有媒体被屏蔽但有文本，降级发送纯文本消息')
                     await self._send_text_message(context, target_chat_id, parse_mode)
                 else:

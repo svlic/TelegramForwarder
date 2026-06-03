@@ -196,6 +196,11 @@ class MediaFilter(BaseFilter):
                         context.should_forward = False
                     return True
 
+            if rule.media_caption_filter and not event.message.text:
+                logger.info(f'Caption过滤开启，单条媒体消息无caption，跳过 ID={event.message.id}')
+                context.should_forward = False
+                return True
+
             # 检查媒体大小
             file_size = await get_media_size(event.message.media)
             file_size = round(file_size/1024/1024, 2)
@@ -215,6 +220,7 @@ class MediaFilter(BaseFilter):
                             break
 
                 logger.info(f'媒体文件超过大小限制 ({rule.max_media_size}MB)')
+                context.skipped_media.append((event.message, file_size, file_name))
                 if rule.is_send_over_media_size_message:
                     logger.info(f'是否发送媒体大小超限提醒: {rule.is_send_over_media_size_message}')
                     context.should_forward = True
@@ -223,11 +229,8 @@ class MediaFilter(BaseFilter):
                     if rule.media_allow_text:
                         logger.info('媒体超限但允许文本通过')
                         context.media_blocked = True  # 标记媒体被屏蔽
-                        context.skipped_media.append((event.message, file_size, file_name))
-                        return True  # 跳过后续的媒体下载
                     else:
                         context.should_forward = False
-                        context.skipped_media.append((event.message, file_size, file_name))
                 return True  # 跳过后续的媒体下载
             else:
                 try:
@@ -245,36 +248,30 @@ class MediaFilter(BaseFilter):
             logger.info('这是一条纯链接预览消息')
 
     async def _is_media_type_blocked(self, media, media_types):
-        """
-        检查媒体类型是否被屏蔽
-
-        Args:
-            media: 媒体对象
-            media_types: MediaTypes对象
-
-        Returns:
-            bool: 如果媒体类型被屏蔽返回True，否则返回False
-        """
-        # 检查各种媒体类型
         if getattr(media, 'photo', None) and media_types.photo:
             logger.info('媒体类型为图片，已被屏蔽')
             return True
 
-        if getattr(media, 'document', None) and media_types.document:
+        document = getattr(media, 'document', None)
+        if not document:
+            return False
+
+        if media_types.document:
             logger.info('媒体类型为文档，已被屏蔽')
             return True
 
-        if getattr(media, 'video', None) and media_types.video:
-            logger.info('媒体类型为视频，已被屏蔽')
-            return True
-
-        if getattr(media, 'audio', None) and media_types.audio:
-            logger.info('媒体类型为音频，已被屏蔽')
-            return True
-
-        if getattr(media, 'voice', None) and media_types.voice:
-            logger.info('媒体类型为语音，已被屏蔽')
-            return True
+        for attr in getattr(document, 'attributes', []):
+            attr_type = type(attr).__name__
+            if attr_type == 'DocumentAttributeVideo' and media_types.video:
+                logger.info('媒体类型为视频，已被屏蔽')
+                return True
+            if attr_type == 'DocumentAttributeAudio':
+                if getattr(attr, 'voice', None) and media_types.voice:
+                    logger.info('媒体类型为语音，已被屏蔽')
+                    return True
+                if media_types.audio:
+                    logger.info('媒体类型为音频，已被屏蔽')
+                    return True
 
         return False
 
