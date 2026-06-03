@@ -3,18 +3,36 @@ import os
 import sys
 import logging
 from telethon.tl.types import ChannelParticipantsAdmins
+from telethon.tl import types
 from enums.enums import ForwardMode
 from models.models import Chat, ForwardRule
 from typing import Iterable
 import re
 from utils.auto_delete import reply_and_delete
-from telethon.tl import types
 from datetime import datetime, timedelta
 import asyncio
 
 from utils.constants import AI_SETTINGS_TEXT,MEDIA_SETTINGS_TEXT
 
 logger = logging.getLogger(__name__)
+
+
+def get_telegram_chat_db_id(entity_or_chat_id):
+    if isinstance(entity_or_chat_id, types.Channel):
+        return str(normalize_channel_id(entity_or_chat_id.id))
+
+    if hasattr(entity_or_chat_id, 'id'):
+        entity_or_chat_id = entity_or_chat_id.id
+
+    chat_id = int(entity_or_chat_id)
+    if str(chat_id).startswith('-100'):
+        return str(chat_id)
+    if str(chat_id).startswith('100'):
+        return str(normalize_channel_id(chat_id))
+    if chat_id < 0:
+        return str(chat_id)
+    return str(chat_id)
+
 
 def normalize_channel_id(chat_id):
     """Normalize channel/supergroup ID to -100XXXXXXXXX format"""
@@ -26,6 +44,15 @@ def normalize_channel_id(chat_id):
     elif not chat_id_str.startswith('-'):
         return int(f'-100{chat_id_str}')
     return int(chat_id_str)
+
+
+def get_state_identity(event):
+    """Return the canonical StateManager key for the current event."""
+    chat_id = abs(event.chat_id)
+    if isinstance(event.chat, types.Channel):
+        return int(os.getenv('USER_ID')), normalize_channel_id(chat_id)
+    return event.sender_id, chat_id
+
 
 def extract_channel_id_for_url(chat_id):
     """Extract pure channel ID for t.me/c/{id} URLs (strips -100 prefix)"""
@@ -78,7 +105,7 @@ async def get_current_rule(session, event):
         logger.info(f'获取当前聊天: {current_chat.id}')
 
         current_chat_db = session.query(Chat).filter(
-            Chat.telegram_chat_id == str(current_chat.id)
+            Chat.telegram_chat_id == get_telegram_chat_db_id(current_chat)
         ).first()
 
         if not current_chat_db or not current_chat_db.current_add_id:
@@ -126,7 +153,7 @@ async def get_all_rules(session, event):
         logger.info(f'获取当前聊天: {current_chat.id}')
 
         current_chat_db = session.query(Chat).filter(
-            Chat.telegram_chat_id == str(current_chat.id)
+            Chat.telegram_chat_id == get_telegram_chat_db_id(current_chat)
         ).first()
 
         if not current_chat_db:
@@ -157,10 +184,8 @@ async def get_all_rules(session, event):
 
 async def get_manageable_rules(session, event):
     current_chat = await event.get_chat()
-    current_chat_id = normalize_channel_id(current_chat.id) if isinstance(current_chat, types.Channel) else current_chat.id
-
     current_chat_db = session.query(Chat).filter(
-        Chat.telegram_chat_id == str(current_chat_id)
+        Chat.telegram_chat_id == get_telegram_chat_db_id(current_chat)
     ).first()
 
     if not current_chat_db:

@@ -5,11 +5,9 @@ from handlers import bot_handler
 from handlers.prompt_handlers import handle_prompt_setting
 from handlers.command_handlers import perform_clear_all, CLEAR_ALL_CONFIRM_TEXT
 import asyncio
-import os
 from managers.state_manager import state_manager
-from telethon.tl import types
 from filters.process import process_forward_rule
-from utils.common import normalize_channel_id
+from utils.common import get_telegram_chat_db_id, get_state_identity
 from utils.auto_delete import async_delete_user_message, reply_and_delete
 
 # 加载环境变量
@@ -102,14 +100,7 @@ async def handle_user_message(event, bot_client):
     
     chat = await event.get_chat()
     chat_id = abs(chat.id)
-    state_chat_id = chat_id
-
-    # 检查是否频道消息
-    if isinstance(event.chat, types.Channel) and state_manager.check_state():
-        sender_id = os.getenv('USER_ID')
-        state_chat_id = normalize_channel_id(chat_id)
-    else:
-        sender_id = event.sender_id
+    sender_id, state_chat_id = get_state_identity(event)
 
     # 检查用户状态
     current_state, message, _state_type = await state_manager.get_state(sender_id, state_chat_id)
@@ -136,7 +127,7 @@ async def handle_user_message(event, bot_client):
     with get_db_session() as session:
         # 查询源聊天
         source_chat = session.query(Chat).filter(
-            Chat.telegram_chat_id == str(chat_id)
+            Chat.telegram_chat_id == get_telegram_chat_db_id(chat)
         ).first()
         
         if not source_chat:
@@ -176,17 +167,7 @@ async def handle_user_message(event, bot_client):
 async def handle_bot_message(event, bot_client):
     """处理机器人客户端收到的消息（命令）"""
     try:
-        chat = await event.get_chat()
-        chat_id = abs(chat.id)
-        state_chat_id = chat_id
-
-        # 检查是否频道消息
-        if isinstance(event.chat, types.Channel) and state_manager.check_state():
-            sender_id = os.getenv('USER_ID')
-            # 频道ID需要转为标准格式 -100XXXXXXXXX
-            state_chat_id = normalize_channel_id(chat_id)
-        else:
-            sender_id = event.sender_id
+        sender_id, state_chat_id = get_state_identity(event)
 
         # 检查用户状态
         current_state, message, _state_type = await state_manager.get_state(sender_id, state_chat_id)

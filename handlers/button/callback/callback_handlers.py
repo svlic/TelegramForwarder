@@ -30,7 +30,7 @@ from handlers.button.callback.other_callback import (
 import logging
 import traceback
 from utils.auto_delete import respond_and_delete
-from utils.common import check_and_clean_chats, get_db_ops, get_ai_settings_text, all_rules_belong_to_current_chat, rule_belongs_to_current_chat
+from utils.common import check_and_clean_chats, get_db_ops, get_ai_settings_text, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_telegram_chat_db_id
 
 
 RULE_CALLBACK_ACTIONS = {
@@ -59,7 +59,7 @@ async def callback_switch(event, rule_id, session, message, data):
     # 获取当前聊天
     current_chat = await event.get_chat()
     current_chat_db = session.query(Chat).filter(
-        Chat.telegram_chat_id == str(current_chat.id)
+        Chat.telegram_chat_id == get_telegram_chat_db_id(current_chat)
     ).first()
 
     if not current_chat_db:
@@ -104,7 +104,7 @@ async def callback_settings(event, rule_id, session, message, data):
     # 获取当前聊天
     current_chat = await event.get_chat()
     current_chat_db = session.query(Chat).filter(
-        Chat.telegram_chat_id == str(current_chat.id)
+        Chat.telegram_chat_id == get_telegram_chat_db_id(current_chat)
     ).first()
 
     if not current_chat_db:
@@ -185,7 +185,7 @@ async def callback_page(event, rule_id, session, message, data):
         # 获取当前聊天和规则
         current_chat = await event.get_chat()
         current_chat_db = session.query(Chat).filter(
-            Chat.telegram_chat_id == str(current_chat.id)
+            Chat.telegram_chat_id == get_telegram_chat_db_id(current_chat)
         ).first()
 
         if not current_chat_db or not current_chat_db.current_add_id:

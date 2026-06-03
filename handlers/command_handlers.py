@@ -10,9 +10,8 @@ from telethon import Button
 from enums.enums import AddMode, ForwardMode
 from models.models import Chat, ForwardRule, Keyword, ReplaceRule, RuleSync, MediaTypes, MediaExtensions, get_db_session
 from utils.constants import TEMP_DIR
-from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client, normalize_channel_id, rule_belongs_to_current_chat
+from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client, normalize_channel_id, rule_belongs_to_current_chat, get_telegram_chat_db_id, get_state_identity
 from managers.state_manager import state_manager
-from telethon.tl import types
 from utils.auto_delete import respond_and_delete, reply_and_delete, async_delete_user_message
 from handlers.button.settings_manager import create_settings_text, create_buttons
 from handlers.list_handlers import show_list
@@ -22,13 +21,6 @@ from version import VERSION, UPDATE_INFO
 logger = logging.getLogger(__name__)
 
 CLEAR_ALL_CONFIRM_TEXT = 'CONFIRM CLEAR ALL'
-
-
-def get_state_identity(event):
-    chat_id = abs(event.chat_id)
-    if isinstance(event.chat, types.Channel):
-        return os.getenv('USER_ID'), normalize_channel_id(chat_id)
-    return event.sender_id, chat_id
 
 
 async def perform_clear_all(session):
@@ -68,167 +60,8 @@ async def handle_bind_command(event, client, parts):
 
     # 默认使用当前聊天作为目标聊天
     current_chat = await event.get_chat()
+    current_chat_id = get_telegram_chat_db_id(current_chat)
 
-    try:
-        # 获取 main 模块中的用户客户端
-        main = await get_main_module()
-        user_client = main.user_client
-
-        # 使用用户客户端获取源聊天的实体信息
-        try:
-            if is_source_link:
-                # 如果是链接，直接获取实体
-                source_chat_entity = await user_client.get_entity(source_target)
-            elif is_source_id:
-                # 如果是频道ID，直接获取实体
-                source_chat_entity = await user_client.get_entity(int(source_target))
-            else:
-                # 如果是名称，获取对话列表并查找匹配的第一个
-                async for dialog in user_client.iter_dialogs():
-                    if dialog.name and source_target.lower() in dialog.name.lower():
-                        source_chat_entity = dialog.entity
-                        break
-                else:
-                    await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-                    await reply_and_delete(event,'未找到匹配的源群组/频道，请确保名称正确且账号已加入该群组/频道')
-                    return
-
-            # 获取目标聊天实体
-            if target_chat_input:
-                is_target_link = target_chat_input.startswith(('https://', 't.me/'))
-                is_target_id = target_chat_input.lstrip('-').isdigit()
-                if is_target_link:
-                    target_chat_entity = await user_client.get_entity(target_chat_input)
-                elif is_target_id:
-                    target_chat_entity = await user_client.get_entity(int(target_chat_input))
-                else:
-                    # 如果是名称，获取对话列表并查找匹配的第一个
-                    async for dialog in user_client.iter_dialogs():
-                        if dialog.name and target_chat_input.lower() in dialog.name.lower():
-                            target_chat_entity = dialog.entity
-                            break
-                    else:
-                        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-                        await reply_and_delete(event,'未找到匹配的目标群组/频道，请确保名称正确且账号已加入该群组/频道')
-                        return
-            else:
-                # 使用当前聊天作为目标
-                target_chat_entity = current_chat
-
-            # # 检查是否在绑定自己
-            # if str(source_chat_entity.id) == str(target_chat_entity.id):
-            #     await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-            #     await reply_and_delete(event,'⚠️ 不能将频道/群组绑定到自己')
-            #     return
-
-        except ValueError:
-            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-            await reply_and_delete(event,'无法获取聊天信息，请确保链接/名称正确且账号已加入该群组/频道')
-            return
-        except Exception as e:
-            logger.error(f'获取聊天信息时出错: {str(e)}')
-            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-            await reply_and_delete(event,'获取聊天信息时出错，请检查日志')
-            return
-
-        # 保存到数据库
-        with get_db_session() as session:
-            # 保存源聊天
-            source_chat_db = session.query(Chat).filter(
-                Chat.telegram_chat_id == str(source_chat_entity.id)
-            ).first()
-
-            if not source_chat_db:
-                source_chat_db = Chat(
-                    telegram_chat_id=str(source_chat_entity.id),
-                    name=source_chat_entity.title if hasattr(source_chat_entity, 'title') else 'Private Chat'
-                )
-                session.add(source_chat_db)
-                session.flush()
-
-            # 保存目标聊天
-            target_chat_db = session.query(Chat).filter(
-                Chat.telegram_chat_id == str(target_chat_entity.id)
-            ).first()
-
-            if not target_chat_db:
-                target_chat_db = Chat(
-                    telegram_chat_id=str(target_chat_entity.id),
-                    name=target_chat_entity.title if hasattr(target_chat_entity, 'title') else 'Private Chat'
-                )
-                session.add(target_chat_db)
-                session.flush()
-
-            # 如果当前没有选中的源聊天，就设置为新绑定的聊天
-            if not target_chat_db.current_add_id:
-                target_chat_db.current_add_id = str(source_chat_entity.id)
-
-            # 创建转发规则
-            rule = ForwardRule(
-                source_chat_id=source_chat_db.id,
-                target_chat_id=target_chat_db.id
-            )
-
-            # 如果是绑定自己，则默认使用白名单模式
-            if str(source_chat_entity.id) == str(target_chat_entity.id):
-                rule.forward_mode = ForwardMode.WHITELIST
-                rule.add_mode = AddMode.WHITELIST
-
-            session.add(rule)
-            session.commit()
-
-            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-            await reply_and_delete(event,
-                f'已设置转发规则:\n'
-                f'源聊天: {source_chat_db.name} ({source_chat_db.telegram_chat_id})\n'
-                f'目标聊天: {target_chat_db.name} ({target_chat_db.telegram_chat_id})\n'
-                f'请使用 /add 或 /add_regex 添加关键字',
-                buttons=[Button.inline("⚙️ 打开设置", f"rule_settings:{rule.id}")]
-            )
-
-    except IntegrityError:
-        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-        await reply_and_delete(event, '已存在相同的转发规则，如需修改请使用 /settings 命令')
-        return
-    except Exception as e:
-        logger.error(f'设置转发规则时出错: {str(e)}\n{traceback.format_exc()}')
-        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-        await reply_and_delete(event,'设置转发规则时出错，请检查日志')
-        return
-
-async def handle_settings_command(event, command, parts):
-    """处理 settings 命令"""
-    # 添加日志
-    logger.info(f'处理 settings 命令 - parts: {parts}')
-
-    # 获取参数
-    args = parts[1:] if len(parts) > 1 else []
-
-    # 检查是否提供了规则ID
-    if len(args) >= 1 and args[0].isdigit():
-        rule_id = int(args[0])
-
-        # 直接打开指定规则的设置界面
-        with get_db_session() as session:
-            rule = session.get(ForwardRule, rule_id)
-            if not rule:
-                await reply_and_delete(event, f'找不到ID为 {rule_id} 的规则')
-                return
-
-            if not await rule_belongs_to_current_chat(session, event, rule_id):
-                await reply_and_delete(event, '您没有权限管理此规则')
-                return
-
-            # 与callback_rule_settings函数相同的处理方式
-            await event.respond(
-                await create_settings_text(rule),
-                buttons=await create_buttons(rule)
-            )
-
-        return
-
-    current_chat = await event.get_chat()
-    current_chat_id = str(current_chat.id)
     # 添加日志
     logger.info(f'正在查找聊天ID: {current_chat_id} 的转发规则')
 
@@ -283,11 +116,10 @@ async def handle_switch_command(event):
     """处理 switch 命令"""
     # 显示可切换的规则列表
     current_chat = await event.get_chat()
-    current_chat_id = str(current_chat.id)
 
     with get_db_session() as session:
         current_chat_db = session.query(Chat).filter(
-            Chat.telegram_chat_id == current_chat_id
+            Chat.telegram_chat_id == get_telegram_chat_db_id(current_chat)
         ).first()
 
         if not current_chat_db:
