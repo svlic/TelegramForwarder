@@ -23,12 +23,9 @@ class InitFilter(BaseFilter):
 
         # logger.info(f"InitFilter处理消息前，context: {context.__dict__}")
         try:
-            #处理媒体组消息
             if event.message.grouped_id:
-                # 等待更长时间让所有媒体消息到达
-                # await asyncio.sleep(1)
+                primary_message = event.message
 
-                # 收集媒体组的所有消息
                 try:
                     async for message in event.client.iter_messages(
                         event.chat_id,
@@ -36,15 +33,22 @@ class InitFilter(BaseFilter):
                         min_id=event.message.id - 10,
                         max_id=event.message.id + 10
                     ):
-                        if message.grouped_id == event.message.grouped_id:
-                            if rule.media_caption_filter and not message.text:
-                                continue
-                            if message.text:
-                                context.message_text = message.text or ''
-                                context.original_message_text = message.text or ''
-                                context.check_message_text = message.text or ''
-                                context.buttons = message.buttons if hasattr(message, 'buttons') else None
-                            logger.info(f'获取到媒体组文本并添加到context: {message.text}')
+                        if message.grouped_id != event.message.grouped_id:
+                            continue
+
+                        if rule.media_caption_filter and not message.text:
+                            continue
+
+                        if message.text and (not primary_message.text or message.id < primary_message.id):
+                            primary_message = message
+
+                    context.primary_message = primary_message
+                    primary_text = primary_message.text or ''
+                    context.message_text = primary_text
+                    context.original_message_text = primary_text
+                    context.check_message_text = primary_text
+                    context.buttons = primary_message.buttons if hasattr(primary_message, 'buttons') else None
+                    logger.info(f'媒体组主消息已确定: ID={primary_message.id}, text={primary_text}')
 
                 except Exception as e:
                     logger.error(f'收集媒体组消息时出错: {str(e)}')

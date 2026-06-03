@@ -3,6 +3,7 @@ import os
 import asyncio
 from utils.media import get_media_size
 from utils.constants import TEMP_DIR
+from utils.common import get_db_ops
 from filters.base_filter import BaseFilter
 from models.models import MediaTypes
 from models.models import get_db_session
@@ -107,6 +108,8 @@ class MediaFilter(BaseFilter):
                         continue
 
                     context.media_group_messages.append(message)
+                    if message.photo or (message.document and getattr(message.document, 'mime_type', '').startswith('image/')):
+                        context.ai_media_messages.append(message)
                     logger.info(f'找到媒体组消息: ID={message.id}, 类型={type(message.media).__name__ if message.media else "无媒体"}')
         except Exception as e:
             logger.error(f'收集媒体组消息时出错: {str(e)}')

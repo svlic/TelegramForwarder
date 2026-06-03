@@ -28,6 +28,8 @@ class MessageContext:
         self.is_media_group = grouped_id is not None
         self.media_group_id = grouped_id
         self.media_group_messages = []
+        self.ai_media_messages = []
+        self.primary_message = message
         
         self.skipped_media = []
         self.errors = []

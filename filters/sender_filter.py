@@ -269,7 +269,9 @@ class SenderFilter(BaseFilter):
         rule = context.rule
         client = context.client
 
-        if not context.message_text:
+        # 组合消息文本
+        message_text = context.sender_info + context.message_text + context.time_info + context.original_link
+        if not message_text:
             logger.info('没有文本内容，不发送消息')
             return
 
@@ -279,9 +281,6 @@ class SenderFilter(BaseFilter):
             PreviewMode.OFF: False,
             PreviewMode.FOLLOW: context.event.message.media is not None  # 跟随原消息
         }[rule.is_preview]
-
-        # 组合消息文本
-        message_text = context.sender_info + context.message_text + context.time_info + context.original_link
 
         await client.send_message(
             target_chat_id,

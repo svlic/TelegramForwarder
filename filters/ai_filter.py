@@ -75,11 +75,10 @@ class AIFilter(BaseFilter):
                     has_media_to_process = bool(image_files)
                     logger.info(f"已加载 {len(image_files)} 个文件到内存")
                     
-                # 如果没有已下载的文件，但有媒体组消息，则直接下载到内存
-                elif context.is_media_group and context.media_group_messages:
-                    logger.info(f"检测到媒体组消息: {len(context.media_group_messages)}条，直接下载到内存")
-                    # 下载媒体组中的图片到内存
-                    for msg in context.media_group_messages:
+                # 如果没有已下载的文件，但有通过媒体过滤的AI图片源，则直接下载到内存
+                elif context.is_media_group and context.ai_media_messages:
+                    logger.info(f"检测到可供AI处理的媒体组图片: {len(context.ai_media_messages)}条，直接下载到内存")
+                    for msg in context.ai_media_messages:
                         if msg.photo or (msg.document and hasattr(msg.document, 'mime_type') and msg.document.mime_type.startswith('image/')):
                             try:
                                 # 创建内存缓冲区
@@ -109,34 +108,6 @@ class AIFilter(BaseFilter):
                     has_media_to_process = bool(image_files)
                     logger.info(f"共下载了 {len(image_files)} 张图片到内存")
                     
-                # 检查单条消息是否有媒体并下载到内存
-                elif event.message and event.message.media:
-                    logger.info("检测到单条消息有媒体，下载到内存")
-                    try:
-                        # 创建内存缓冲区
-                        buffer = io.BytesIO()
-                        # 直接下载到内存
-                        await event.message.download_media(file=buffer)
-                        # 获取图片内容
-                        buffer.seek(0)
-                        content = buffer.read()
-                        
-                        # 获取MIME类型
-                        mime_type = "image/jpeg"  # 默认类型
-                        if hasattr(event.message.media, 'photo'):
-                            mime_type = "image/jpeg"
-                        elif hasattr(event.message.media, 'document') and hasattr(event.message.media.document, 'mime_type'):
-                            mime_type = event.message.media.document.mime_type
-                        
-                        # 保存到内存图片列表
-                        image_files.append({
-                            "data": base64.b64encode(content).decode('utf-8'),
-                            "mime_type": mime_type
-                        })
-                        has_media_to_process = True
-                        logger.info(f"已下载单条消息媒体到内存，类型: {mime_type}，大小: {len(content) // 1024} KB")
-                    except Exception as e:
-                        logger.error(f"下载单条消息媒体到内存时出错: {str(e)}")
             
             # 如果有消息文本或图片，使用AI处理
             if context.message_text or has_media_to_process:
