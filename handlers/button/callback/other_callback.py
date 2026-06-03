@@ -10,7 +10,7 @@ from models.models import get_db_session
 from telethon import Button
 from sqlalchemy import inspect
 from utils.constants import RULES_PER_PAGE
-from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat
+from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_state_identity
 from utils.auto_delete import send_message_and_delete
 from managers.state_manager import state_manager
 
@@ -1134,11 +1134,8 @@ async def callback_set_userinfo_template(event, rule_id, session, message, data)
         if not await is_admin(event):
             await event.answer('只有管理员可以修改设置')
             return
-        user_id = os.getenv('USER_ID')
-    else:
-        user_id = event.sender_id
 
-    chat_id = abs(event.chat_id)
+    user_id, chat_id = get_state_identity(event)
     state = f"set_userinfo_template:{rule_id}"
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
@@ -1190,11 +1187,8 @@ async def callback_set_time_template(event, rule_id, session, message, data):
         if not await is_admin(event):
             await event.answer('只有管理员可以修改设置')
             return
-        user_id = os.getenv('USER_ID')
-    else:
-        user_id = event.sender_id
 
-    chat_id = abs(event.chat_id)
+    user_id, chat_id = get_state_identity(event)
     state = f"set_time_template:{rule_id}"
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
@@ -1244,7 +1238,8 @@ async def callback_cancel_set_userinfo(event, rule_id, session, message, data):
     with get_db_session() as session:
         rule = session.get(ForwardRule, int(rule_id))
         if rule:
-            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+            user_id, chat_id = get_state_identity(event)
+            await state_manager.clear_state(user_id, chat_id)
             # 返回到其他设置页面
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
             await event.answer("已取消设置")
@@ -1256,7 +1251,8 @@ async def callback_cancel_set_time(event, rule_id, session, message, data):
     with get_db_session() as session:
         rule = session.get(ForwardRule, int(rule_id))
         if rule:
-            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+            user_id, chat_id = get_state_identity(event)
+            await state_manager.clear_state(user_id, chat_id)
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
             await event.answer("已取消设置")
     return
@@ -1276,11 +1272,8 @@ async def callback_set_original_link_template(event, rule_id, session, message, 
         if not await is_admin(event):
             await event.answer('只有管理员可以修改设置')
             return
-        user_id = os.getenv('USER_ID')
-    else:
-        user_id = event.sender_id
 
-    chat_id = abs(event.chat_id)
+    user_id, chat_id = get_state_identity(event)
     state = f"set_original_link_template:{rule_id}"
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
@@ -1322,7 +1315,8 @@ async def callback_cancel_set_original_link(event, rule_id, session, message, da
     with get_db_session() as session:
         rule = session.get(ForwardRule, int(rule_id))
         if rule:
-            await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+            user_id, chat_id = get_state_identity(event)
+            await state_manager.clear_state(user_id, chat_id)
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
             await event.answer("已取消设置")
     return

@@ -8,7 +8,7 @@ from handlers.button.button_helpers import create_ai_settings_buttons, create_su
 from models.models import ForwardRule, RuleSync
 from telethon import Button
 import logging
-from utils.common import get_main_module, get_ai_settings_text
+from utils.common import get_main_module, get_ai_settings_text, get_state_identity
 from utils.common import is_admin
 from scheduler.summary_scheduler import SummaryScheduler
 
@@ -37,17 +37,12 @@ async def callback_set_summary_prompt(event, rule_id, session, message, data):
         await event.answer('规则不存在')
         return
 
-    # 检查是否频道消息
     if isinstance(event.chat, types.Channel):
-        # 检查是否是管理员
         if not await is_admin(event):
             await event.answer('只有管理员可以修改设置')
             return
-        user_id = os.getenv('USER_ID')
-    else:
-        user_id = event.sender_id
 
-    chat_id = abs(event.chat_id)
+    user_id, chat_id = get_state_identity(event)
     state = f"set_summary_prompt:{rule_id}"
     
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
@@ -85,11 +80,8 @@ async def callback_set_ai_prompt(event, rule_id, session, message, data):
         if not await is_admin(event):
             await event.answer('只有管理员可以修改设置')
             return
-        user_id = os.getenv('USER_ID')
-    else:
-        user_id = event.sender_id
 
-    chat_id = abs(event.chat_id)
+    user_id, chat_id = get_state_identity(event)
     state = f"set_ai_prompt:{rule_id}"
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
@@ -213,11 +205,14 @@ async def callback_select_time(event, rule_id, session, message, data):
 
 
 async def callback_select_model(event, rule_id, session, message, data):
-    # 分割数据，最多分割2次，将第三部分直接作为完整的模型名称
-    parts = data.split(':', 2)
-    _, rule_id_part, model = parts
-    
     try:
+        parts = data.split(':', 2)
+        if len(parts) != 3:
+            logger.warning(f"AI模型选择回调数据格式错误: {data}")
+            await event.answer('回调数据格式错误')
+            return
+
+        _, rule_id_part, model = parts
         rule = session.get(ForwardRule, int(rule_id_part))
         if rule:
             # 记录旧模型
@@ -264,6 +259,9 @@ async def callback_select_model(event, rule_id, session, message, data):
 
             # 返回到 AI 设置页面
             await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
+    except Exception as e:
+        logger.error(f"选择AI模型时出错: {str(e)}")
+        logger.exception(e)
     return
 
 
@@ -288,7 +286,8 @@ async def callback_cancel_set_model(event, rule_id, session, message, data):
     rule_id = data.split(':')[1]
     rule = session.get(ForwardRule, int(rule_id))
     if rule:
-        await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+        user_id, chat_id = get_state_identity(event)
+        await state_manager.clear_state(user_id, chat_id)
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
         await event.answer("已取消设置")
     return
@@ -299,7 +298,8 @@ async def callback_cancel_set_prompt(event, rule_id, session, message, data):
     rule_id = data.split(':')[1]
     rule = session.get(ForwardRule, int(rule_id))
     if rule:
-        await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+        user_id, chat_id = get_state_identity(event)
+        await state_manager.clear_state(user_id, chat_id)
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
         await event.answer("已取消设置")
     return
@@ -311,7 +311,8 @@ async def callback_cancel_set_summary(event, rule_id, session, message, data):
     rule_id = data.split(':')[1]
     rule = session.get(ForwardRule, int(rule_id))
     if rule:
-        await state_manager.clear_state(event.sender_id, abs(event.chat_id))
+        user_id, chat_id = get_state_identity(event)
+        await state_manager.clear_state(user_id, chat_id)
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
         await event.answer("已取消设置")
     return
