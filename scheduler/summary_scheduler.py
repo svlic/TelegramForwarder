@@ -49,7 +49,7 @@ class SummaryScheduler:
                 logger.info(f"规则 {rule.id} 的下一次执行时间: {next_time.strftime('%Y-%m-%d %H:%M:%S')}")
                 logger.info(f"等待时间: {wait_seconds:.2f} 秒")
 
-                task = asyncio.create_task(self._run_summary_task(rule))
+                task = asyncio.create_task(self._run_summary_task(rule.id))
                 self.tasks[rule.id] = task
                 logger.info(f"已为规则 {rule.id} 创建新的总结任务，时间: {rule.summary_time}")
             else:
@@ -59,26 +59,31 @@ class SummaryScheduler:
             logger.error(f"调度规则 {rule.id} 时出错: {str(e)}")
             logger.error(f"错误详情: {traceback.format_exc()}")
 
-    async def _run_summary_task(self, rule):
+    async def _run_summary_task(self, rule_id):
         """运行单个规则的总结任务"""
         while True:
             try:
-                # 计算下一次执行时间
-                now = datetime.now(self.timezone)
-                target_time = self._get_next_run_time(now, rule.summary_time)
+                with get_db_session() as session:
+                    rule = session.get(ForwardRule, rule_id)
+                    if not rule or not rule.is_summary:
+                        logger.info(f"规则 {rule_id} 的总结功能已关闭或规则不存在，停止任务")
+                        self.tasks.pop(rule_id, None)
+                        break
+                    summary_time = rule.summary_time
 
-                # 等待到执行时间
+                now = datetime.now(self.timezone)
+                target_time = self._get_next_run_time(now, summary_time)
+
                 wait_seconds = (target_time - now).total_seconds()
                 await asyncio.sleep(wait_seconds)
 
-                # 执行总结任务
-                await self._execute_summary(rule.id)
+                await self._execute_summary(rule_id)
 
             except asyncio.CancelledError:
-                logger.info(f"规则 {rule.id} 的旧任务已取消")
+                logger.info(f"规则 {rule_id} 的旧任务已取消")
                 break
             except Exception as e:
-                logger.error(f"规则 {rule.id} 的总结任务出错: {str(e)}")
+                logger.error(f"规则 {rule_id} 的总结任务出错: {str(e)}")
                 await asyncio.sleep(60)  # 出错后等待一分钟再重试
 
     def _split_message(self, text: str, max_length: int = MAX_MESSAGE_PART_LENGTH):
