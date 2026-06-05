@@ -347,14 +347,3 @@ class SummaryScheduler:
         for task in self.tasks.values():
             task.cancel()
         self.tasks.clear()
-
-    async def execute_all_summaries(self):
-        """立即执行所有启用了总结功能的规则"""
-        with get_db_session() as session:
-            rules = session.query(ForwardRule).filter_by(is_summary=True).all()
-            # 使用 gather 但限制并发数
-            tasks = [self._execute_summary(rule.id, is_now=True) for rule in rules]
-            for i in range(0, len(tasks), 2):  # 每次执行2个任务
-                batch = tasks[i:i+2]
-                await asyncio.gather(*batch)
-                await asyncio.sleep(1)  # 每批次之间稍微暂停
