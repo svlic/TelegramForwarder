@@ -59,10 +59,6 @@ class StateManager:
                 self._timeout_tasks[key].cancel()
                 del self._timeout_tasks[key]
         logger.debug(f"当前所有状态: {self._states}")
-    
-    def check_state(self) -> bool:
-        """检查是否存在状态"""
-        return bool(self._states)
 
 # 创建全局实例
 state_manager = StateManager()

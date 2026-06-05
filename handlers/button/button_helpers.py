@@ -180,10 +180,6 @@ async def create_summary_time_buttons(rule_id, page=0):
     start_idx = page * times_per_page
     end_idx = min(start_idx + times_per_page, total_times)
 
-    # 检查是否是频道消息
-    buttons = []
-    total_times = len(SUMMARY_TIMES)
-
     # 添加时间按钮
     current_row = []
     for i, time in enumerate(SUMMARY_TIMES[start_idx:end_idx], start=1):
@@ -240,10 +236,6 @@ async def create_media_size_buttons(rule_id, page=0):
     total_size = len(MEDIA_SIZE)
     start_idx = page * size_select_per_page
     end_idx = min(start_idx + size_select_per_page, total_size)
-
-    # 检查是否是频道消息
-    buttons = []
-    total_size = len(MEDIA_SIZE)
 
     # 添加媒体大小按钮
     current_row = []
@@ -302,10 +294,6 @@ async def create_delay_time_buttons(rule_id, page=0):
     total_times = len(DELAY_TIMES)
     start_idx = page * times_per_page
     end_idx = min(start_idx + times_per_page, total_times)
-
-    # 检查是否是频道消息
-    buttons = []
-    total_times = len(DELAY_TIMES)
 
     # 添加时间按钮
     current_row = []
