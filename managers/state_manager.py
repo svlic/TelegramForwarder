@@ -1,6 +1,6 @@
 import logging
 import asyncio
-from typing import Dict, Tuple, Optional, Union
+from typing import Dict, Tuple, Optional
 from telethon.tl.custom import Message
 
 logger = logging.getLogger(__name__)
