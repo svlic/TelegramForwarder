@@ -3,7 +3,7 @@ import json
 import time
 from pathlib import Path
 import websockets
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any
 import logging
 
 from utils.common import get_db_ops
@@ -27,7 +27,6 @@ class UFBClient:
         self.config_path = self.config_dir / "config.json"
         self.websocket: Optional[websockets.WebSocketClientProtocol] = None
         self.is_connected = False
-        self.on_config_update_callbacks: list[Callable[[Dict[str, Any]], None]] = []
         self.reconnect_task = None  # 用于存储重连任务
         
         # 确保配置目录存在
@@ -101,18 +100,6 @@ class UFBClient:
                 merged[key] = cloud_value
 
         return merged
-
-    def on_config_update(self, callback: Callable[[Dict[str, Any]], None]):
-        """注册配置更新回调"""
-        self.on_config_update_callbacks.append(callback)
-
-    def notify_config_update(self, config: Dict[str, Any]):
-        """通知所有监听器配置已更新"""
-        for callback in self.on_config_update_callbacks:
-            try:
-                callback(config)
-            except Exception as e:
-                logger.error(f"配置更新回调执行失败: {e}")
 
     async def handle_config_conflict(self, conflict_data: Dict[str, Any], local_config: Dict[str, Any]) -> Dict[str, Any]:
         """处理配置冲突
@@ -255,7 +242,6 @@ class UFBClient:
                         if data.get("message") == "firstSync_success":
                             logger.info("首次同步成功")
                             await self.save_config(data)
-                            self.notify_config_update(data)
 
                     elif msg_type == "update":
                         if data:
@@ -263,7 +249,6 @@ class UFBClient:
                                 await self.save_config(data, to_client=True)
                             else:
                                 await self.save_config(data)
-                            self.notify_config_update(data)
                             
                             if data.get("message") == "config_updated":
                                 logger.info("配置已更新")
@@ -290,7 +275,6 @@ class UFBClient:
                         # 合并配置
                         merged_config = self.merge_configs(local_config, response)
                         await self.save_config(merged_config)
-                        self.notify_config_update(merged_config)
 
                     elif msg_type == "delete":
                         if data.get("success"):
