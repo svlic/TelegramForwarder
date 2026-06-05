@@ -1,5 +1,4 @@
 import traceback
-import os
 import asyncio
 from telethon.tl import types
 

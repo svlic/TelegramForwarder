@@ -3,17 +3,15 @@ import os
 import traceback
 import shlex
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import inspect
 from telethon import Button
 
-from enums.enums import AddMode, ForwardMode
+from enums.enums import AddMode
 from models.models import Chat, ForwardRule, Keyword, ReplaceRule, RuleSync, MediaTypes, MediaExtensions, get_db_session
 from utils.constants import TEMP_DIR
-from utils.common import get_main_module, get_current_rule, get_db_ops, get_bot_client, normalize_channel_id, rule_belongs_to_current_chat, get_telegram_chat_db_id, get_state_identity
+from utils.common import get_current_rule, get_db_ops, get_bot_client, rule_belongs_to_current_chat, get_telegram_chat_db_id, get_state_identity
 from managers.state_manager import state_manager
 from utils.auto_delete import respond_and_delete, reply_and_delete, async_delete_user_message
-from handlers.button.settings_manager import create_settings_text, create_buttons
 from handlers.list_handlers import show_list
 
 from version import VERSION, UPDATE_INFO
