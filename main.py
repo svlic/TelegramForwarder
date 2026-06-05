@@ -16,10 +16,6 @@ from handlers.bot_handler import send_welcome_message
 from utils.log_config import setup_logging
 from utils.constants import TEMP_DIR
 
-# 设置Docker日志的默认配置，如果docker-compose.yml中没有配置日志选项将使用这些值
-os.environ.setdefault('DOCKER_LOG_MAX_SIZE', '10m')
-os.environ.setdefault('DOCKER_LOG_MAX_FILE', '3')
-
 # 设置日志配置
 setup_logging()
 
