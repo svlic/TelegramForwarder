@@ -112,3 +112,5 @@ docker-compose run -it telegram-forwarder
 - EDIT模式必须尊重前置过滤器的`should_forward`、`media_blocked`和`skipped_media`状态，避免媒体过滤后仍修改源消息
 - 频道消息监听中，数据库查询保留`/bind`存储的原始chat ID；状态管理键可使用`normalize_channel_id()`规范化ID
 - 读写`StateManager`时统一使用`utils.common.get_state_identity(event)`，避免频道场景 callback 与 listener 的 `(user_id, chat_id)` key 不一致
+- Docker日志轮转不要通过`DOCKER_LOG_MAX_SIZE` / `DOCKER_LOG_MAX_FILE`环境变量配置；应使用 Docker logging options
+- UFB配置更新回调已移除；如需恢复，必须同时添加实际注册者和测试
