@@ -47,9 +47,11 @@ def normalize_channel_id(chat_id):
 
 
 def get_state_identity(event):
-    """Return the canonical StateManager key for the current event."""
     chat_id = abs(event.chat_id)
     if isinstance(event.chat, types.Channel):
+        sender_id = getattr(event, 'sender_id', None)
+        if sender_id is not None:
+            return sender_id, normalize_channel_id(chat_id)
         return int(os.getenv('USER_ID')), normalize_channel_id(chat_id)
     return event.sender_id, chat_id
 
@@ -61,6 +63,42 @@ def extract_channel_id_for_url(chat_id):
     if normalized_str.startswith('-100'):
         return normalized_str[4:]
     return normalized_str
+
+
+async def collect_media_group_messages(client, chat_id, grouped_id, *, wait_seconds=1.5, max_empty_polls=3):
+    if not grouped_id:
+        return []
+
+    collected = {}
+    empty_polls = 0
+
+    for _ in range(max_empty_polls):
+        await asyncio.sleep(wait_seconds)
+        batch = await client.get_messages(chat_id, limit=100)
+        matched = [message for message in batch if getattr(message, 'grouped_id', None) == grouped_id]
+
+        if not matched:
+            empty_polls += 1
+            continue
+
+        empty_polls = 0
+        for message in matched:
+            collected[message.id] = message
+
+        if len(matched) < 10:
+            break
+
+    return sorted(collected.values(), key=lambda message: message.id)
+
+
+def select_primary_media_group_message(messages, *, require_caption=False):
+    if not messages:
+        return None
+
+    candidates = [message for message in messages if getattr(message, 'text', None)]
+    if require_caption:
+        return candidates[0] if candidates else None
+    return candidates[0] if candidates else messages[0]
 
 async def get_main_module():
     """获取 main 模块"""
