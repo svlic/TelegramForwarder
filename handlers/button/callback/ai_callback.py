@@ -341,7 +341,7 @@ async def callback_summary_now(event, rule_id, session, message, data):
         )
         
         try:
-            asyncio.create_task(scheduler._execute_summary(rule.id, is_now=True))
+            asyncio.create_task(scheduler._execute_summary(rule.id, is_now=True, lookback_hours=24))
             logger.info(f"已启动规则 {rule_id} 的立即总结任务")
         except Exception as e:
             logger.error(f"执行总结任务失败: {str(e)}")

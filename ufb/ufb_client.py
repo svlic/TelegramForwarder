@@ -102,25 +102,13 @@ class UFBClient:
         return merged
 
     async def handle_config_conflict(self, conflict_data: Dict[str, Any], local_config: Dict[str, Any]) -> Dict[str, Any]:
-        """处理配置冲突
-        返回最终使用的配置
-        """
         logger.info(f"配置冲突: \n云端时间: {conflict_data['cloudTime']}\n本地时间: {conflict_data['localTime']}")
-        
-        # 总是选择使用云端配置
+        newer_config = conflict_data.get("newerConfig") or {}
+        merged_config = self.merge_configs(local_config, newer_config)
         await self.websocket.send(json.dumps({
             "type": "resolveConflict",
             "choice": "useCloud"
         }))
-        
-        # 等待服务器响应
-        cloud_config = json.loads(await self.websocket.recv())
-        logger.info(f"收到云端配置: {json.dumps(cloud_config, ensure_ascii=False, indent=2)}")
-        
-        # 合并云端和本地配置
-        merged_config = self.merge_configs(local_config, cloud_config)
-        logger.info(f"合并后的配置: {json.dumps(merged_config, ensure_ascii=False, indent=2)}")
-        
         return merged_config
 
     async def connect(self, server_url: str, token: str):
@@ -254,26 +242,8 @@ class UFBClient:
                                 logger.info("配置已更新")
 
                     elif msg_type == "configConflict":
-                        # 获取时间戳
-                        cloud_time = data.get("cloudTime")
-                        local_time = data.get("localTime")
-                        newer_config = data.get("newerConfig")
-                        
-                        logger.info(f"配置冲突:\n云端时间: {cloud_time}\n本地时间: {local_time}\n较新配置: {newer_config}")
-                        
-                        # 加载本地配置
                         local_config = self.load_config()
-                        
-                        # 总是使用云端配置
-                        await self.websocket.send(json.dumps({
-                            "type": "resolveConflict",
-                            "choice": "useCloud"
-                        }))
-                        
-                        # 等待服务器响应
-                        response = json.loads(await self.websocket.recv())
-                        # 合并配置
-                        merged_config = self.merge_configs(local_config, response)
+                        merged_config = await self.handle_config_conflict(data, local_config)
                         await self.save_config(merged_config)
 
                     elif msg_type == "delete":
