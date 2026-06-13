@@ -4,6 +4,7 @@ import logging
 from handlers import bot_handler
 from handlers.prompt_handlers import handle_prompt_setting
 from handlers.command_handlers import perform_clear_all, CLEAR_ALL_CONFIRM_TEXT
+from utils.common import is_admin
 import asyncio
 from managers.state_manager import state_manager
 from filters.process import process_forward_rule
@@ -13,10 +14,9 @@ from utils.auto_delete import async_delete_user_message, reply_and_delete
 # 加载环境变量
 logger = logging.getLogger(__name__)
 
-# 添加一个缓存来存储已处理的媒体组
-PROCESSED_GROUPS = set()
-# 保护 PROCESSED_GROUPS 的锁，防止竞态条件
+PROCESSED_GROUPS = {}
 _PROCESSED_GROUPS_LOCK = asyncio.Lock()
+_GROUP_CACHE_TTL = 300
 
 BOT_ID = None
 
@@ -28,6 +28,11 @@ async def handle_clear_all_confirmation(event, sender_id, state_chat_id):
     if (event.raw_text or '').strip() != CLEAR_ALL_CONFIRM_TEXT:
         logger.info('clear_all 已取消，确认文本不匹配')
         await reply_and_delete(event, '已取消 clear_all 操作')
+        return True
+
+    if not await is_admin(event):
+        logger.warning('clear_all confirmation rejected for non-admin sender=%s chat=%s', sender_id, state_chat_id)
+        await reply_and_delete(event, '只有管理员可以执行 clear_all')
         return True
 
     with get_db_session() as session:
@@ -118,10 +123,14 @@ async def handle_user_message(event, bot_client):
     if event.message.grouped_id:
         group_key = f"{chat_id}:{event.message.grouped_id}"
         async with _PROCESSED_GROUPS_LOCK:
-            if group_key in PROCESSED_GROUPS:
+            now = asyncio.get_running_loop().time()
+            expired_keys = [key for key, expires_at in PROCESSED_GROUPS.items() if expires_at <= now]
+            for expired_key in expired_keys:
+                PROCESSED_GROUPS.pop(expired_key, None)
+
+            if PROCESSED_GROUPS.get(group_key, 0) > now:
                 return
-            PROCESSED_GROUPS.add(group_key)
-        asyncio.create_task(clear_group_cache(group_key))
+            PROCESSED_GROUPS[group_key] = now + _GROUP_CACHE_TTL
     
     # 首先检查数据库中是否有该聊天的转发规则
     with get_db_session() as session:
@@ -188,7 +197,6 @@ async def handle_bot_message(event, bot_client):
         logger.exception(e)
 
 async def clear_group_cache(group_key, delay=300):
-    """清除已处理的媒体组记录"""
-    await asyncio.sleep(delay)
+    await asyncio.sleep(0)
     async with _PROCESSED_GROUPS_LOCK:
-        PROCESSED_GROUPS.discard(group_key)
+        PROCESSED_GROUPS.pop(group_key, None)

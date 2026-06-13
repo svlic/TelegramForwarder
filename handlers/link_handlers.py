@@ -1,7 +1,7 @@
 import re
 import os
 import logging
-from utils.common import get_main_module
+from utils.common import get_main_module, collect_media_group_messages, select_primary_media_group_message
 from utils.constants import TEMP_DIR
 from utils.auto_delete import reply_and_delete
 
@@ -58,24 +58,14 @@ async def handle_media_group(client, user_client, chat_id, message, event):
     """处理媒体组消息"""
     files = []  # 将 files 移到外层作用域
     try:
-        # 收集媒体组的所有消息
-        media_group_messages = []
-        caption = None
-        buttons = None
-        
-        # 在消息ID前后范围内搜索同组消息
-        async for grouped_message in user_client.iter_messages(
+        media_group_messages = await collect_media_group_messages(
+            user_client,
             chat_id,
-            limit=20,
-            min_id=message.id - 10,
-            max_id=message.id + 10
-        ):
-            if grouped_message.grouped_id == message.grouped_id:
-                media_group_messages.append(grouped_message)
-                # 保存第一条消息的文本和按钮
-                if not caption:
-                    caption = grouped_message.text
-                    buttons = grouped_message.buttons if hasattr(grouped_message, 'buttons') else None
+            message.grouped_id,
+        )
+        primary_message = select_primary_media_group_message(media_group_messages) or message
+        caption = primary_message.text if primary_message.text else None
+        buttons = primary_message.buttons if hasattr(primary_message, 'buttons') else None
 
         if media_group_messages:
             # 下载所有媒体文件
