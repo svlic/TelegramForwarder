@@ -8,11 +8,46 @@ from utils.common import get_media_settings_text, get_db_ops
 logger = logging.getLogger(__name__)
 
 
+async def _refresh_media_settings(event, rule):
+    await event.edit(await get_media_settings_text(), buttons=await create_media_settings_buttons(rule))
+
+
+async def _toggle_media_rule_flag(event, session, rule_id, *, field_name, status_text, sync_log_label):
+    rule = session.get(ForwardRule, int(rule_id))
+    if not rule:
+        await event.answer("规则不存在")
+        return
+
+    new_value = not getattr(rule, field_name)
+    setattr(rule, field_name, new_value)
+
+    if rule.enable_sync:
+        logger.info(f"规则 {rule.id} 启用了同步功能，正在同步{sync_log_label}设置到关联规则")
+        sync_rules = session.query(RuleSync).filter(RuleSync.rule_id == rule.id).all()
+        for sync_rule in sync_rules:
+            sync_rule_id = sync_rule.sync_rule_id
+            target_rule = session.get(ForwardRule, sync_rule_id)
+            if not target_rule:
+                logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
+                continue
+
+            try:
+                setattr(target_rule, field_name, new_value)
+                logger.info(f"同步规则 {sync_rule_id} 的{sync_log_label}设置已更新为 {new_value}")
+            except Exception as e:
+                logger.error(f"同步{sync_log_label}设置到规则 {sync_rule_id} 时出错: {str(e)}")
+                continue
+
+    session.commit()
+    await _refresh_media_settings(event, rule)
+    status = "开启" if new_value else "关闭"
+    await event.answer(f"已{status}{status_text}")
+
 
 async def callback_media_settings(event, rule_id, session, message, data):
     rule = session.get(ForwardRule, int(rule_id))
     if rule:
-        await event.edit(await get_media_settings_text(), buttons=await create_media_settings_buttons(rule))
+        await _refresh_media_settings(event, rule)
     return
 
 
@@ -61,7 +96,7 @@ async def callback_select_max_media_size(event, rule_id, session, message, data)
                     session.commit()
                     logger.info("所有同步媒体大小更改已提交")
 
-                await event.edit("媒体设置：",buttons=await create_media_settings_buttons(rule))
+                await _refresh_media_settings(event, rule)
                 await event.answer(f"已设置最大媒体大小为: {size}MB")
                 logger.info("界面更新完成")
         return
@@ -289,41 +324,14 @@ async def callback_toggle_media_extension(event, rule_id, session, message, data
 
 async def callback_toggle_media_allow_text(event, rule_id, session, message, data):
     try:
-        rule = session.get(ForwardRule, int(rule_id))
-        if not rule:
-            await event.answer("规则不存在")
-            return
-
-        rule.media_allow_text = not rule.media_allow_text
-
-        if rule.enable_sync:
-            logger.info(f"规则 {rule.id} 启用了同步功能，正在同步'放行文本'设置到关联规则")
-
-            sync_rules = session.query(RuleSync).filter(RuleSync.rule_id == rule.id).all()
-
-            for sync_rule in sync_rules:
-                sync_rule_id = sync_rule.sync_rule_id
-                logger.info(f"正在同步'放行文本'设置到规则 {sync_rule_id}")
-
-                target_rule = session.get(ForwardRule, sync_rule_id)
-                if not target_rule:
-                    logger.warning(f"同步目标规则 {sync_rule_id} 不存在，跳过")
-                    continue
-
-                try:
-                    target_rule.media_allow_text = rule.media_allow_text
-                    logger.info(f"同步规则 {sync_rule_id} 的'放行文本'设置已更新为 {rule.media_allow_text}")
-                except Exception as e:
-                    logger.error(f"同步'放行文本'设置到规则 {sync_rule_id} 时出错: {str(e)}")
-                    continue
-
-        session.commit()
-
-        await event.edit(await get_media_settings_text(), buttons=await create_media_settings_buttons(rule))
-
-        status = "开启" if rule.media_allow_text else "关闭"
-        await event.answer(f"已{status}放行文本")
-
+        await _toggle_media_rule_flag(
+            event,
+            session,
+            rule_id,
+            field_name="media_allow_text",
+            status_text="放行文本",
+            sync_log_label="'放行文本'",
+        )
     except Exception as e:
         logger.error(f"切换放行文本设置时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
@@ -332,27 +340,14 @@ async def callback_toggle_media_allow_text(event, rule_id, session, message, dat
 
 async def callback_toggle_media_caption_filter(event, rule_id, session, message, data):
     try:
-        rule = session.get(ForwardRule, int(rule_id))
-        if not rule:
-            await event.answer("规则不存在")
-            return
-
-        rule.media_caption_filter = not rule.media_caption_filter
-
-        if rule.enable_sync:
-            logger.info(f"规则 {rule.id} 启用了同步功能，正在同步Caption过滤设置到关联规则")
-            sync_rules = session.query(RuleSync).filter(RuleSync.rule_id == rule.id).all()
-            for sync_rule in sync_rules:
-                sync_rule_id = sync_rule.sync_rule_id
-                target_rule = session.get(ForwardRule, sync_rule_id)
-                if target_rule:
-                    target_rule.media_caption_filter = rule.media_caption_filter
-                    logger.info(f"同步规则 {sync_rule_id} 的Caption过滤设置已更新")
-
-        session.commit()
-        await event.edit(await get_media_settings_text(), buttons=await create_media_settings_buttons(rule))
-        status = "开启" if rule.media_caption_filter else "关闭"
-        await event.answer(f"已{status}Caption过滤")
+        await _toggle_media_rule_flag(
+            event,
+            session,
+            rule_id,
+            field_name="media_caption_filter",
+            status_text="Caption过滤",
+            sync_log_label="Caption过滤",
+        )
     except Exception as e:
         logger.error(f"切换Caption过滤设置时出错: {str(e)}")
         await event.answer(f"切换Caption过滤设置时出错: {str(e)}")

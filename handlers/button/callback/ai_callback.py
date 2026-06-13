@@ -16,6 +16,54 @@ from scheduler.summary_scheduler import SummaryScheduler
 logger = logging.getLogger(__name__)
 
 
+async def _start_ai_prompt_state(event, rule_id, session, message, *, state_prefix, prompt_attr, default_env_key, prompt_name, cancel_action):
+    logger.info(f"开始处理设置{prompt_name}回调 - event: {event}, rule_id: {rule_id}")
+
+    rule = session.get(ForwardRule, rule_id)
+    if not rule:
+        await event.answer('规则不存在')
+        return
+
+    if isinstance(event.chat, types.Channel) and not await is_admin(event):
+        await event.answer('只有管理员可以修改设置')
+        return
+
+    user_id, chat_id = get_state_identity(event)
+    state = f"{state_prefix}:{rule_id}"
+
+    logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
+    try:
+        await state_manager.set_state(user_id, chat_id, state, message, state_type="ai")
+        logger.info("状态设置成功")
+    except Exception as e:
+        logger.error(f"设置状态时出错: {str(e)}")
+        logger.exception(e)
+
+    try:
+        current_prompt = getattr(rule, prompt_attr, None) or os.getenv(default_env_key, '未设置')
+        await message.edit(
+            f"请发送新的{prompt_name}\n"
+            f"当前规则ID: `{rule_id}`\n"
+            f"当前{prompt_name}：\n\n`{current_prompt}`\n\n"
+            f"5分钟内未设置将自动取消",
+            buttons=[[Button.inline("取消", f"{cancel_action}:{rule_id}")]]
+        )
+        logger.info("消息编辑成功")
+    except Exception as e:
+        logger.error(f"编辑消息时出错: {str(e)}")
+        logger.exception(e)
+
+
+async def _cancel_ai_setting(event, session, data):
+    rule_id = data.split(':')[1]
+    rule = session.get(ForwardRule, int(rule_id))
+    if rule:
+        user_id, chat_id = get_state_identity(event)
+        await state_manager.clear_state(user_id, chat_id)
+        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
+        await event.answer("已取消设置")
+
+
 async def callback_ai_settings(event, rule_id, session, message, data):
     rule = session.get(ForwardRule, int(rule_id))
     if rule:
@@ -30,81 +78,31 @@ async def callback_set_summary_time(event, rule_id, session, message, data):
 
 async def callback_set_summary_prompt(event, rule_id, session, message, data):
     """处理设置AI总结提示词的回调"""
-    logger.info(f"开始处理设置AI总结提示词回调 - event: {event}, rule_id: {rule_id}")
-    
-    rule = session.get(ForwardRule, rule_id)
-    if not rule:
-        await event.answer('规则不存在')
-        return
-
-    if isinstance(event.chat, types.Channel):
-        if not await is_admin(event):
-            await event.answer('只有管理员可以修改设置')
-            return
-
-    user_id, chat_id = get_state_identity(event)
-    state = f"set_summary_prompt:{rule_id}"
-    
-    logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
-    try:
-        await state_manager.set_state(user_id, chat_id, state, message, state_type="ai")
-        logger.info("状态设置成功")
-    except Exception as e:
-        logger.error(f"设置状态时出错: {str(e)}")
-        logger.exception(e)
-
-    try:
-        current_prompt = rule.summary_prompt or os.getenv('DEFAULT_SUMMARY_PROMPT', '未设置')
-        await message.edit(
-            f"请发送新的AI总结提示词\n"
-            f"当前规则ID: `{rule_id}`\n"
-            f"当前AI总结提示词：\n\n`{current_prompt}`\n\n"
-            f"5分钟内未设置将自动取消",
-            buttons=[[Button.inline("取消", f"cancel_set_summary:{rule_id}")]]
-        )
-        logger.info("消息编辑成功")
-    except Exception as e:
-        logger.error(f"编辑消息时出错: {str(e)}")
-        logger.exception(e)
+    await _start_ai_prompt_state(
+        event,
+        rule_id,
+        session,
+        message,
+        state_prefix="set_summary_prompt",
+        prompt_attr="summary_prompt",
+        default_env_key="DEFAULT_SUMMARY_PROMPT",
+        prompt_name="AI总结提示词",
+        cancel_action="cancel_set_summary",
+    )
 
 
 async def callback_set_ai_prompt(event, rule_id, session, message, data):
-    logger.info(f"开始处理设置AI提示词回调 - event: {event}, rule_id: {rule_id}")
-
-    rule = session.get(ForwardRule, rule_id)
-    if not rule:
-        await event.answer('规则不存在')
-        return
-
-    if isinstance(event.chat, types.Channel):
-        if not await is_admin(event):
-            await event.answer('只有管理员可以修改设置')
-            return
-
-    user_id, chat_id = get_state_identity(event)
-    state = f"set_ai_prompt:{rule_id}"
-
-    logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
-    try:
-        await state_manager.set_state(user_id, chat_id, state, message, state_type="ai")
-        logger.info("状态设置成功")
-    except Exception as e:
-        logger.error(f"设置状态时出错: {str(e)}")
-        logger.exception(e)
-
-    try:
-        current_prompt = rule.ai_prompt or os.getenv('DEFAULT_AI_PROMPT', '未设置')
-        await message.edit(
-            f"请发送新的AI提示词\n"
-            f"当前规则ID: `{rule_id}`\n"
-            f"当前AI提示词：\n\n`{current_prompt}`\n\n"
-            f"5分钟内未设置将自动取消",
-            buttons=[[Button.inline("取消", f"cancel_set_prompt:{rule_id}")]]
-        )
-        logger.info("消息编辑成功")
-    except Exception as e:
-        logger.error(f"编辑消息时出错: {str(e)}")
-        logger.exception(e)
+    await _start_ai_prompt_state(
+        event,
+        rule_id,
+        session,
+        message,
+        state_prefix="set_ai_prompt",
+        prompt_attr="ai_prompt",
+        default_env_key="DEFAULT_AI_PROMPT",
+        prompt_name="AI提示词",
+        cancel_action="cancel_set_prompt",
+    )
 
 
    
@@ -283,38 +281,17 @@ async def callback_set_ai_model(event, rule_id, session, message, data):
 
 
 async def callback_cancel_set_model(event, rule_id, session, message, data):
-    rule_id = data.split(':')[1]
-    rule = session.get(ForwardRule, int(rule_id))
-    if rule:
-        user_id, chat_id = get_state_identity(event)
-        await state_manager.clear_state(user_id, chat_id)
-        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-        await event.answer("已取消设置")
+    await _cancel_ai_setting(event, session, data)
     return
-
 
 
 async def callback_cancel_set_prompt(event, rule_id, session, message, data):
-    rule_id = data.split(':')[1]
-    rule = session.get(ForwardRule, int(rule_id))
-    if rule:
-        user_id, chat_id = get_state_identity(event)
-        await state_manager.clear_state(user_id, chat_id)
-        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-        await event.answer("已取消设置")
+    await _cancel_ai_setting(event, session, data)
     return
 
 
-
-
 async def callback_cancel_set_summary(event, rule_id, session, message, data):
-    rule_id = data.split(':')[1]
-    rule = session.get(ForwardRule, int(rule_id))
-    if rule:
-        user_id, chat_id = get_state_identity(event)
-        await state_manager.clear_state(user_id, chat_id)
-        await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-        await event.answer("已取消设置")
+    await _cancel_ai_setting(event, session, data)
     return
 
 async def callback_summary_now(event, rule_id, session, message, data):

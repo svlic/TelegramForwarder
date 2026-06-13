@@ -30,7 +30,7 @@ from handlers.button.callback.other_callback import (
 import logging
 import traceback
 from utils.auto_delete import respond_and_delete
-from utils.common import check_and_clean_chats, get_db_ops, get_ai_settings_text, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_telegram_chat_db_id
+from utils.common import check_and_clean_chats, get_ai_settings_text, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_telegram_chat_db_id
 
 
 RULE_CALLBACK_ACTIONS = {

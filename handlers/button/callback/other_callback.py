@@ -721,161 +721,79 @@ async def send_result_message(event, message, result_message, target_rule_id):
         parse_mode='markdown'
     )
 
-async def callback_clear_keyword(event, rule_id, session, message, data):
-    """显示清空关键字规则选择界面"""
+async def _show_bulk_action_rule_selection(event, rule_id, session, data, *, current_button_text, current_action, title, error_label):
     try:
-        # 检查是否包含page参数
         parts = data.split(':')
         page = 0
         if len(parts) > 2:
             page = int(parts[2])
 
-        # 获取规则信息
         current_rule = session.get(ForwardRule, int(rule_id))
         if not current_rule:
             await event.answer("规则不存在")
             return
 
-        # 创建按钮列表，首先添加当前规则
-        buttons = []
-        source_chat = current_rule.source_chat
-        target_chat = current_rule.target_chat
-
-        # 当前规则按钮
-        current_button_text = f"🗑️ 清空当前规则"
-        current_callback_data = f"perform_clear_keyword:{current_rule.id}"
-        buttons.append([Button.inline(current_button_text, current_callback_data)])
-
+        buttons = [[Button.inline(current_button_text, f"{current_action}:{current_rule.id}")]]
         manageable_rules = await get_manageable_rules(session, event)
         other_rules = sum(1 for rule in manageable_rules if rule.id != current_rule.id)
 
         if other_rules > 0:
-            # 分隔符
             buttons.append([Button.inline("---------", "noop")])
-
-            # 添加其他规则按钮
-            other_buttons = await create_rule_selection_buttons(event, rule_id, page, "perform_clear_keyword")
-
-            # 将所有其他规则按钮添加到buttons中
-            buttons.extend(other_buttons)
+            buttons.extend(await create_rule_selection_buttons(event, rule_id, page, current_action))
         else:
-            # 添加返回和关闭按钮
             buttons.append([
                 Button.inline('👈 返回', f"other_settings:{current_rule.id}"),
                 Button.inline('❌ 关闭', 'close_settings')
             ])
 
-        await event.edit("请选择要清空关键字的规则：", buttons=buttons)
+        await event.edit(title, buttons=buttons)
     except Exception as e:
-        logger.error(f"显示清空关键字选择界面时出错: {str(e)}")
+        logger.error(f"{error_label}时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
-        await event.answer("显示清空关键字界面失败")
+        await event.answer(f"{error_label}失败")
+
+
+async def callback_clear_keyword(event, rule_id, session, message, data):
+    """显示清空关键字规则选择界面"""
+    await _show_bulk_action_rule_selection(
+        event,
+        rule_id,
+        session,
+        data,
+        current_button_text="🗑️ 清空当前规则",
+        current_action="perform_clear_keyword",
+        title="请选择要清空关键字的规则：",
+        error_label="显示清空关键字界面",
+    )
     return
+
 
 async def callback_clear_replace(event, rule_id, session, message, data):
     """显示清空替换规则选择界面"""
-    try:
-        # 检查是否包含page参数
-        parts = data.split(':')
-        page = 0
-        if len(parts) > 2:
-            page = int(parts[2])
-
-        # 获取规则信息
-        current_rule = session.get(ForwardRule, int(rule_id))
-        if not current_rule:
-            await event.answer("规则不存在")
-            return
-
-        # 创建按钮列表，首先添加当前规则
-        buttons = []
-        source_chat = current_rule.source_chat
-        target_chat = current_rule.target_chat
-
-        # 当前规则按钮
-        current_button_text = f"🗑️ 清空当前规则"
-        current_callback_data = f"perform_clear_replace:{current_rule.id}"
-        buttons.append([Button.inline(current_button_text, current_callback_data)])
-
-        manageable_rules = await get_manageable_rules(session, event)
-        other_rules = sum(1 for rule in manageable_rules if rule.id != current_rule.id)
-
-        if other_rules > 0:
-            # 分隔符
-            buttons.append([Button.inline("---------", "noop")])
-
-            # 添加其他规则按钮
-            other_buttons = await create_rule_selection_buttons(event, rule_id, page, "perform_clear_replace")
-
-            # 将所有其他规则按钮添加到buttons中
-            buttons.extend(other_buttons)
-        else:
-            # 添加返回和关闭按钮
-            buttons.append([
-                Button.inline('👈 返回', f"other_settings:{current_rule.id}"),
-                Button.inline('❌ 关闭', 'close_settings')
-            ])
-
-        await event.edit("请选择要清空替换规则的规则：", buttons=buttons)
-    except Exception as e:
-        logger.error(f"显示清空替换规则选择界面时出错: {str(e)}")
-        logger.error(f"错误详情: {traceback.format_exc()}")
-        await event.answer("显示清空替换规则界面失败")
+    await _show_bulk_action_rule_selection(
+        event,
+        rule_id,
+        session,
+        data,
+        current_button_text="🗑️ 清空当前规则",
+        current_action="perform_clear_replace",
+        title="请选择要清空替换规则的规则：",
+        error_label="显示清空替换规则界面",
+    )
     return
 
 async def callback_delete_rule(event, rule_id, session, message, data):
     """显示删除规则选择界面"""
-    try:
-        # 检查是否包含page参数
-        parts = data.split(':')
-        page = 0
-        if len(parts) > 2:
-            page = int(parts[2])
-
-        source_rule_id = rule_id
-        if ':' in str(rule_id):
-            source_rule_id = str(rule_id).split(':')[0]
-
-        # 获取规则信息
-        current_rule = session.get(ForwardRule, int(source_rule_id))
-        if not current_rule:
-            await event.answer("规则不存在")
-            return
-
-        # 创建按钮列表，首先添加当前规则
-        buttons = []
-        source_chat = current_rule.source_chat
-        target_chat = current_rule.target_chat
-
-        # 当前规则按钮
-        current_button_text = f"❌ 删除当前规则"
-        current_callback_data = f"perform_delete_rule:{current_rule.id}"
-        buttons.append([Button.inline(current_button_text, current_callback_data)])
-
-        manageable_rules = await get_manageable_rules(session, event)
-        other_rules = sum(1 for rule in manageable_rules if rule.id != current_rule.id)
-
-        if other_rules > 0:
-            # 分隔符
-            buttons.append([Button.inline("---------", "noop")])
-
-            # 添加其他规则按钮
-            other_buttons = await create_rule_selection_buttons(event, rule_id, page, "perform_delete_rule")
-
-            # 将所有其他规则按钮添加到buttons中
-            buttons.extend(other_buttons)
-        else:
-            # 添加返回和关闭按钮
-            buttons.append([
-                Button.inline('👈 返回', f"other_settings:{current_rule.id}"),
-                Button.inline('❌ 关闭', 'close_settings')
-            ])
-
-        await event.edit("请选择要删除的规则：", buttons=buttons)
-    except Exception as e:
-        logger.error(f"显示删除规则选择界面时出错: {str(e)}")
-        logger.error(f"错误详情: {traceback.format_exc()}")
-        await event.answer("显示删除规则界面失败")
+    await _show_bulk_action_rule_selection(
+        event,
+        rule_id,
+        session,
+        data,
+        current_button_text="❌ 删除当前规则",
+        current_action="perform_delete_rule",
+        title="请选择要删除的规则：",
+        error_label="显示删除规则界面",
+    )
     return
 
 # 执行清空关键字的回调
@@ -1118,29 +1036,24 @@ async def callback_perform_delete_rule(event, rule_id_data, session, message, da
         await event.answer(f"删除规则失败: {str(e)}")
     return
 
-async def callback_set_userinfo_template(event, rule_id, session, message, data):
-    """设置用户信息模板"""
-    logger.info(f"开始处理设置用户信息模板回调 - event: {event}, rule_id: {rule_id}")
+async def _start_template_state(event, rule_id, session, message, *, state_prefix, state_type, template_attr, template_name, help_text, cancel_action):
+    logger.info(f"开始处理设置{template_name}回调 - event: {event}, rule_id: {rule_id}")
 
     rule = session.get(ForwardRule, rule_id)
     if not rule:
         await event.answer('规则不存在')
         return
 
-    # 检查是否频道消息
-    if isinstance(event.chat, types.Channel):
-        # 检查是否是管理员
-        if not await is_admin(event):
-            await event.answer('只有管理员可以修改设置')
-            return
+    if isinstance(event.chat, types.Channel) and not await is_admin(event):
+        await event.answer('只有管理员可以修改设置')
+        return
 
     user_id, chat_id = get_state_identity(event)
-    state = f"set_userinfo_template:{rule_id}"
+    state = f"{state_prefix}:{rule_id}"
 
     logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
     try:
-        await state_manager.set_state(user_id, chat_id, state, message, state_type="userinfo")
-        # 启动超时取消任务
+        await state_manager.set_state(user_id, chat_id, state, message, state_type=state_type)
         asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
         logger.info("状态设置成功")
     except Exception as e:
@@ -1148,79 +1061,62 @@ async def callback_set_userinfo_template(event, rule_id, session, message, data)
         logger.exception(e)
 
     try:
-        current_template = rule.userinfo_template if hasattr(rule, 'userinfo_template') and rule.userinfo_template else '未设置'
-
-        help_text = (
-            "用户信息模板用于在转发消息中添加用户信息。\n"
-            "可用变量：\n"
-            "{name} - 用户名\n"
-            "{id} - 用户ID\n"
-        )
-
+        current_template = getattr(rule, template_attr, None) or '未设置'
         await message.edit(
-            f"请发送新的用户信息模板\n"
+            f"请发送新的{template_name}\n"
             f"当前规则ID: `{rule_id}`\n"
-            f"当前用户信息模板：\n\n`{current_template}`\n\n"
+            f"当前{template_name}：\n\n`{current_template}`\n\n"
             f"{help_text}\n"
             f"5分钟内未设置将自动取消",
-            buttons=[[Button.inline("取消", f"cancel_set_userinfo:{rule_id}")]]
+            buttons=[[Button.inline("取消", f"{cancel_action}:{rule_id}")]]
         )
         logger.info("消息编辑成功")
     except Exception as e:
         logger.error(f"编辑消息时出错: {str(e)}")
         logger.exception(e)
+
+
+async def callback_set_userinfo_template(event, rule_id, session, message, data):
+    """设置用户信息模板"""
+    help_text = (
+        "用户信息模板用于在转发消息中添加用户信息。\n"
+        "可用变量：\n"
+        "{name} - 用户名\n"
+        "{id} - 用户ID\n"
+    )
+    await _start_template_state(
+        event,
+        rule_id,
+        session,
+        message,
+        state_prefix="set_userinfo_template",
+        state_type="userinfo",
+        template_attr="userinfo_template",
+        template_name="用户信息模板",
+        help_text=help_text,
+        cancel_action="cancel_set_userinfo",
+    )
     return
 
 async def callback_set_time_template(event, rule_id, session, message, data):
     """设置时间模板"""
-    logger.info(f"开始处理设置时间模板回调 - event: {event}, rule_id: {rule_id}")
-
-    rule = session.get(ForwardRule, rule_id)
-    if not rule:
-        await event.answer('规则不存在')
-        return
-
-    # 检查是否频道消息
-    if isinstance(event.chat, types.Channel):
-        # 检查是否是管理员
-        if not await is_admin(event):
-            await event.answer('只有管理员可以修改设置')
-            return
-
-    user_id, chat_id = get_state_identity(event)
-    state = f"set_time_template:{rule_id}"
-
-    logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
-    try:
-        await state_manager.set_state(user_id, chat_id, state, message, state_type="time")
-        # 启动超时取消任务
-        asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
-        logger.info("状态设置成功")
-    except Exception as e:
-        logger.error(f"设置状态时出错: {str(e)}")
-        logger.exception(e)
-
-    try:
-        current_template = rule.time_template if hasattr(rule, 'time_template') and rule.time_template else '未设置'
-
-        help_text = (
-            "时间模板用于在转发消息中添加时间信息。\n"
-            "可用变量:\n"
-            "{time} - 当前时间\n"
-        )
-
-        await message.edit(
-            f"请发送新的时间模板\n"
-            f"当前规则ID: `{rule_id}`\n"
-            f"当前时间模板：\n\n`{current_template}`\n\n"
-            f"{help_text}\n"
-            f"5分钟内未设置将自动取消",
-            buttons=[[Button.inline("取消", f"cancel_set_time:{rule_id}")]]
-        )
-        logger.info("消息编辑成功")
-    except Exception as e:
-        logger.error(f"编辑消息时出错: {str(e)}")
-        logger.exception(e)
+    help_text = (
+        "时间模板用于在转发消息中添加时间信息。\n"
+        "可用变量:\n"
+        "{time} - 当前时间\n"
+    )
+    await _start_template_state(
+        event,
+        rule_id,
+        session,
+        message,
+        state_prefix="set_time_template",
+        state_type="time",
+        template_attr="time_template",
+        template_name="时间模板",
+        help_text=help_text,
+        cancel_action="cancel_set_time",
+    )
     return
 
 async def cancel_state_after_timeout(user_id: int, chat_id: int, timeout_minutes: int = 5):
@@ -1233,83 +1129,36 @@ async def cancel_state_after_timeout(user_id: int, chat_id: int, timeout_minutes
 
 async def callback_cancel_set_userinfo(event, rule_id, session, message, data):
     """取消设置用户信息模板"""
-    rule_id = data.split(':')[1]
-    with get_db_session() as session:
-        rule = session.get(ForwardRule, int(rule_id))
-        if rule:
-            user_id, chat_id = get_state_identity(event)
-            await state_manager.clear_state(user_id, chat_id)
-            # 返回到其他设置页面
-            await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
-            await event.answer("已取消设置")
+    await _cancel_template_state(event, data)
     return
 
 async def callback_cancel_set_time(event, rule_id, session, message, data):
     """取消设置时间模板"""
-    rule_id = data.split(':')[1]
-    with get_db_session() as session:
-        rule = session.get(ForwardRule, int(rule_id))
-        if rule:
-            user_id, chat_id = get_state_identity(event)
-            await state_manager.clear_state(user_id, chat_id)
-            await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
-            await event.answer("已取消设置")
+    await _cancel_template_state(event, data)
     return
 
 async def callback_set_original_link_template(event, rule_id, session, message, data):
     """设置原始链接模板"""
-    logger.info(f"开始处理设置原始链接模板回调 - event: {event}, rule_id: {rule_id}")
-
-    rule = session.get(ForwardRule, rule_id)
-    if not rule:
-        await event.answer('规则不存在')
-        return
-
-    # 检查是否频道消息
-    if isinstance(event.chat, types.Channel):
-        # 检查是否是管理员
-        if not await is_admin(event):
-            await event.answer('只有管理员可以修改设置')
-            return
-
-    user_id, chat_id = get_state_identity(event)
-    state = f"set_original_link_template:{rule_id}"
-
-    logger.info(f"准备设置状态 - user_id: {user_id}, chat_id: {chat_id}, state: {state}")
-    try:
-        await state_manager.set_state(user_id, chat_id, state, message, state_type="link")
-        # 启动超时取消任务
-        asyncio.create_task(cancel_state_after_timeout(user_id, chat_id))
-        logger.info("状态设置成功")
-    except Exception as e:
-        logger.error(f"设置状态时出错: {str(e)}")
-        logger.exception(e)
-
-    try:
-        current_template = rule.original_link_template if hasattr(rule, 'original_link_template') and rule.original_link_template else '未设置'
-
-        help_text = (
-            "原始链接模板用于在转发消息中添加原始链接。\n"
-            "可用变量:\n"
-            "{original_link} - 完整的原始链接\n"
-        )
-
-        await message.edit(
-            f"请发送新的原始链接模板\n"
-            f"当前规则ID: `{rule_id}`\n"
-            f"当前原始链接模板：\n\n`{current_template}`\n\n"
-            f"{help_text}\n"
-            f"5分钟内未设置将自动取消",
-            buttons=[[Button.inline("取消", f"cancel_set_link:{rule_id}")]]
-        )
-        logger.info("消息编辑成功")
-    except Exception as e:
-        logger.error(f"编辑消息时出错: {str(e)}")
-        logger.exception(e)
+    help_text = (
+        "原始链接模板用于在转发消息中添加原始链接。\n"
+        "可用变量:\n"
+        "{original_link} - 完整的原始链接\n"
+    )
+    await _start_template_state(
+        event,
+        rule_id,
+        session,
+        message,
+        state_prefix="set_original_link_template",
+        state_type="link",
+        template_attr="original_link_template",
+        template_name="原始链接模板",
+        help_text=help_text,
+        cancel_action="cancel_set_link",
+    )
     return
 
-async def callback_cancel_set_original_link(event, rule_id, session, message, data):
-    """取消设置原始链接模板"""
+async def _cancel_template_state(event, data):
     rule_id = data.split(':')[1]
     with get_db_session() as session:
         rule = session.get(ForwardRule, int(rule_id))
@@ -1318,38 +1167,49 @@ async def callback_cancel_set_original_link(event, rule_id, session, message, da
             await state_manager.clear_state(user_id, chat_id)
             await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
             await event.answer("已取消设置")
+
+
+async def callback_cancel_set_original_link(event, rule_id, session, message, data):
+    """取消设置原始链接模板"""
+    await _cancel_template_state(event, data)
     return
+
+
+async def _toggle_other_setting(event, session, rule_id, *, field_name, log_label):
+    try:
+        rule = session.get(ForwardRule, int(rule_id))
+        if not rule:
+            await event.answer("规则不存在")
+            return
+
+        setattr(rule, field_name, not getattr(rule, field_name))
+        session.commit()
+        await event.answer("设置已更新")
+        await event.edit(buttons=await create_other_settings_buttons(rule_id=rule_id))
+    except Exception as e:
+        logger.error(f"切换{log_label}时出错: {str(e)}")
+        await event.answer("更新设置失败")
+
 
 async def callback_toggle_reverse_blacklist(event, rule_id, session, message, data):
     """切换反转黑名单设置"""
-    try:
-        rule = session.get(ForwardRule, int(rule_id))
-        if rule:
-            rule.enable_reverse_blacklist = not rule.enable_reverse_blacklist
-            session.commit()
-            await event.answer("设置已更新")
-
-            await event.edit(
-                buttons=await create_other_settings_buttons(rule_id=rule_id)
-            )
-    except Exception as e:
-        logger.error(f"切换反转黑名单设置时出错: {str(e)}")
-        await event.answer("更新设置失败")
+    await _toggle_other_setting(
+        event,
+        session,
+        rule_id,
+        field_name="enable_reverse_blacklist",
+        log_label="反转黑名单设置",
+    )
     return
+
 
 async def callback_toggle_reverse_whitelist(event, rule_id, session, message, data):
     """切换反转白名单设置"""
-    try:
-        rule = session.get(ForwardRule, int(rule_id))
-        if rule:
-            rule.enable_reverse_whitelist = not rule.enable_reverse_whitelist
-            session.commit()
-            await event.answer("设置已更新")
-
-            await event.edit(
-                buttons=await create_other_settings_buttons(rule_id=rule_id)
-            )
-    except Exception as e:
-        logger.error(f"切换反转白名单设置时出错: {str(e)}")
-        await event.answer("更新设置失败")
+    await _toggle_other_setting(
+        event,
+        session,
+        rule_id,
+        field_name="enable_reverse_whitelist",
+        log_label="反转白名单设置",
+    )
     return
