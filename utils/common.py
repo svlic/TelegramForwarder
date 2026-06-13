@@ -234,18 +234,15 @@ async def get_manageable_rules(session, event):
     ).all()
 
 
-async def get_manageable_rule_ids(session, event):
-    rules = await get_manageable_rules(session, event)
-    return {rule.id for rule in rules}
-
-
 async def rule_belongs_to_current_chat(session, event, rule_id):
     try:
         normalized_rule_id = int(rule_id)
     except (TypeError, ValueError):
         return False
 
-    manageable_rule_ids = await get_manageable_rule_ids(session, event)
+    manageable_rule_ids = {
+        rule.id for rule in await get_manageable_rules(session, event)
+    }
     return normalized_rule_id in manageable_rule_ids
 
 
@@ -255,7 +252,9 @@ async def all_rules_belong_to_current_chat(session, event, rule_ids: Iterable[in
     except (TypeError, ValueError):
         return False
 
-    manageable_rule_ids = await get_manageable_rule_ids(session, event)
+    manageable_rule_ids = {
+        rule.id for rule in await get_manageable_rules(session, event)
+    }
     return normalized_rule_ids.issubset(manageable_rule_ids)
 
 
