@@ -4,7 +4,7 @@ import traceback
 from telethon import Button
 from filters.base_filter import BaseFilter
 from telethon.tl.functions.channels import GetFullChannelRequest
-from utils.common import get_main_module, extract_channel_id_for_url
+from utils.common import get_main_module, extract_channel_id_for_url, collect_media_group_messages
 from difflib import SequenceMatcher
 logger = logging.getLogger(__name__)
 
@@ -86,30 +86,19 @@ class CommentButtonFilter(BaseFilter):
 
                 if hasattr(event.message, 'grouped_id') and event.message.grouped_id:
                     logger.info(f"检测到媒体组消息，组ID: {event.message.grouped_id}")
-                    # 获取同一媒体组的所有消息
-                    media_group_messages = []
-
                     try:
-                        # 获取频道历史消息
-                        async for message in client.iter_messages(
+                        media_group_messages = await collect_media_group_messages(
+                            client,
                             channel_entity,
-                            limit=20,  # 限制查询消息数量
-                            offset_date=event.message.date,  # 从当前消息时间开始查询
-                            reverse=False  # 从新到旧
-                        ):
-                            # 检查是否属于同一媒体组
-                            if (hasattr(message, 'grouped_id') and
-                                message.grouped_id == event.message.grouped_id):
-                                media_group_messages.append(message)
+                            event.message.grouped_id,
+                        )
 
                         if media_group_messages:
-                            # 找出ID最小的消息
                             min_id_message = min(media_group_messages, key=lambda x: x.id)
                             channel_msg_id = min_id_message.id
                             logger.info(f"使用媒体组中ID最小的消息: {channel_msg_id}")
                     except Exception as e:
                         logger.error(f"获取媒体组消息失败: {e}")
-                        # 失败时使用原始消息ID
                         logger.info(f"使用原始消息ID: {channel_msg_id}")
 
                 # 添加短暂延迟，等待消息同步完成

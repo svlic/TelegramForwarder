@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from filters.base_filter import BaseFilter
-from utils.common import get_main_module
+from utils.common import get_main_module, collect_media_group_messages, select_primary_media_group_message
 
 logger = logging.getLogger(__name__)
 
@@ -67,21 +67,12 @@ class DelayFilter(BaseFilter):
                     # 如果是媒体组，重新获取完整媒体组
                     if updated_message.grouped_id:
                         logger.info(f"[规则ID:{rule.id}] 消息属于媒体组，正在重新获取完整媒体组...")
-                        media_group_messages = []
-                        async for message in client.iter_messages(
+                        media_group_messages = await collect_media_group_messages(
+                            client,
                             chat_id,
-                            limit=20,
-                            min_id=updated_message.id - 10,
-                            max_id=updated_message.id + 10
-                        ):
-                            if message.grouped_id == updated_message.grouped_id:
-                                media_group_messages.append(message)
-
-                        # 找到主消息（带text的最早的）
-                        primary_message = updated_message
-                        for message in media_group_messages:
-                            if message.text and (not primary_message.text or message.id < primary_message.id):
-                                primary_message = message
+                            updated_message.grouped_id,
+                        )
+                        primary_message = select_primary_media_group_message(media_group_messages) or updated_message
 
                         context.primary_message = primary_message
                         context.media_group_messages = media_group_messages

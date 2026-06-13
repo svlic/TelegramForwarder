@@ -1,5 +1,6 @@
 import logging
 from filters.base_filter import BaseFilter
+from utils.common import collect_media_group_messages, select_primary_media_group_message
 
 logger = logging.getLogger(__name__)
 
@@ -24,23 +25,19 @@ class InitFilter(BaseFilter):
         # logger.info(f"InitFilter处理消息前，context: {context.__dict__}")
         try:
             if event.message.grouped_id:
-                primary_message = event.message
-
                 try:
-                    async for message in event.client.iter_messages(
+                    media_group_messages = await collect_media_group_messages(
+                        event.client,
                         event.chat_id,
-                        limit=20,
-                        min_id=event.message.id - 10,
-                        max_id=event.message.id + 10
-                    ):
-                        if message.grouped_id != event.message.grouped_id:
-                            continue
+                        event.message.grouped_id,
+                    )
+                    if media_group_messages:
+                        context.media_group_messages = media_group_messages
 
-                        if rule.media_caption_filter and not message.text:
-                            continue
-
-                        if message.text and (not primary_message.text or message.id < primary_message.id):
-                            primary_message = message
+                    primary_message = select_primary_media_group_message(
+                        media_group_messages or [event.message],
+                        require_caption=rule.media_caption_filter,
+                    ) or event.message
 
                     context.primary_message = primary_message
                     primary_text = primary_message.text or ''

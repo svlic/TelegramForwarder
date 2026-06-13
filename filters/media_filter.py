@@ -3,7 +3,7 @@ import os
 import asyncio
 from utils.media import get_media_size
 from utils.constants import TEMP_DIR
-from utils.common import get_db_ops
+from utils.common import get_db_ops, collect_media_group_messages
 from filters.base_filter import BaseFilter
 from models.models import MediaTypes
 from models.models import get_db_session
@@ -45,8 +45,11 @@ class MediaFilter(BaseFilter):
 
         logger.info(f'处理媒体组消息 组ID: {event.message.grouped_id}')
 
-        # 等待更长时间让所有媒体消息到达
-        await asyncio.sleep(1)
+        media_group_messages = await collect_media_group_messages(
+            event.client,
+            event.chat_id,
+            event.message.grouped_id,
+        )
 
         # 获取媒体类型设置
         media_types = None
@@ -58,59 +61,49 @@ class MediaFilter(BaseFilter):
         total_media_count = 0  # 总媒体数量
         blocked_media_count = 0  # 被屏蔽的媒体数量
         try:
-            async for message in event.client.iter_messages(
-                event.chat_id,
-                limit=20,
-                min_id=event.message.id - 10,
-                max_id=event.message.id + 10
-            ):
-                if message.grouped_id == event.message.grouped_id:
-                    if message.media:
-                        total_media_count += 1
-                        # 检查媒体类型
-                        if rule.enable_media_type_filter and media_types and message.media:
-                            if await self._is_media_type_blocked(message.media, media_types):
-                                logger.info(f'媒体类型被屏蔽，跳过消息 ID={message.id}')
-                                blocked_media_count += 1
-                                continue
-
-                        # 检查媒体扩展名
-                        if rule.enable_extension_filter and message.media:
-                            if not await self._is_media_extension_allowed(rule, message.media):
-                                logger.info(f'媒体扩展名被屏蔽，跳过消息 ID={message.id}')
-                                blocked_media_count += 1
-                                continue
-
-                    # 检查媒体大小
-                    if message.media:
-                        file_size = await get_media_size(message.media)
-                        file_size = round(file_size/1024/1024, 2)  # 转换为MB
-                        logger.info(f'媒体文件大小: {file_size}MB')
-                        logger.info(f'规则最大媒体大小: {rule.max_media_size}MB')
-                        logger.info(f'是否启用媒体大小过滤: {rule.enable_media_size_filter}')
-                        logger.info(f'是否发送媒体大小超限提醒: {rule.is_send_over_media_size_message}')
-
-                        if rule.max_media_size and (file_size > rule.max_media_size) and rule.enable_media_size_filter:
-                            file_name = ''
-                            if hasattr(message.media, 'document') and message.media.document:
-                                for attr in message.media.document.attributes:
-                                    if hasattr(attr, 'file_name'):
-                                        file_name = attr.file_name
-                                        break
-                            logger.info(f'媒体文件 {file_name} 超过大小限制 ({rule.max_media_size}MB)')
-                            context.skipped_media.append((message, file_size, file_name))
+            for message in media_group_messages:
+                if message.media:
+                    total_media_count += 1
+                    if rule.enable_media_type_filter and media_types and message.media:
+                        if await self._is_media_type_blocked(message.media, media_types):
+                            logger.info(f'媒体类型被屏蔽，跳过消息 ID={message.id}')
+                            blocked_media_count += 1
                             continue
 
-                    # 检查caption过滤
-                    if rule.media_caption_filter and not message.text:
-                        logger.info(f'Caption过滤开启，消息无caption，跳过 ID={message.id}')
-                        blocked_media_count += 1
+                    if rule.enable_extension_filter and message.media:
+                        if not await self._is_media_extension_allowed(rule, message.media):
+                            logger.info(f'媒体扩展名被屏蔽，跳过消息 ID={message.id}')
+                            blocked_media_count += 1
+                            continue
+
+                if message.media:
+                    file_size = await get_media_size(message.media)
+                    file_size = round(file_size/1024/1024, 2)
+                    logger.info(f'媒体文件大小: {file_size}MB')
+                    logger.info(f'规则最大媒体大小: {rule.max_media_size}MB')
+                    logger.info(f'是否启用媒体大小过滤: {rule.enable_media_size_filter}')
+                    logger.info(f'是否发送媒体大小超限提醒: {rule.is_send_over_media_size_message}')
+
+                    if rule.max_media_size and (file_size > rule.max_media_size) and rule.enable_media_size_filter:
+                        file_name = ''
+                        if hasattr(message.media, 'document') and message.media.document:
+                            for attr in message.media.document.attributes:
+                                if hasattr(attr, 'file_name'):
+                                    file_name = attr.file_name
+                                    break
+                        logger.info(f'媒体文件 {file_name} 超过大小限制 ({rule.max_media_size}MB)')
+                        context.skipped_media.append((message, file_size, file_name))
                         continue
 
-                    context.media_group_messages.append(message)
-                    if message.photo or (message.document and getattr(message.document, 'mime_type', '').startswith('image/')):
-                        context.ai_media_messages.append(message)
-                    logger.info(f'找到媒体组消息: ID={message.id}, 类型={type(message.media).__name__ if message.media else "无媒体"}')
+                if rule.media_caption_filter and not message.text:
+                    logger.info(f'Caption过滤开启，消息无caption，跳过 ID={message.id}')
+                    blocked_media_count += 1
+                    continue
+
+                context.media_group_messages.append(message)
+                if message.photo or (message.document and getattr(message.document, 'mime_type', '').startswith('image/')):
+                    context.ai_media_messages.append(message)
+                logger.info(f'找到媒体组消息: ID={message.id}, 类型={type(message.media).__name__ if message.media else "无媒体"}')
         except Exception as e:
             logger.error(f'收集媒体组消息时出错: {str(e)}')
             context.errors.append(f"收集媒体组消息错误: {str(e)}")
