@@ -301,17 +301,23 @@ async def callback_perform_copy_rule(event, rule_id_data, session, message, data
 
         # 获取ForwardRule模型的所有字段
         inspector = inspect(ForwardRule)
+        sync_related_fields = {'enable_sync'}
         for column in inspector.columns:
             column_name = column.key
-            if column_name not in ['id', 'source_chat_id', 'target_chat_id', 'source_chat', 'target_chat',
-                                  'keywords', 'replace_rules', 'media_types']:
-                # 获取源规则的值并设置到目标规则
-                value = getattr(source_rule, column_name)
-                setattr(target_rule, column_name, value)
+            if column_name in ['id', 'source_chat_id', 'target_chat_id', 'source_chat', 'target_chat',
+                               'keywords', 'replace_rules', 'media_types']:
+                continue
+            if column_name in sync_related_fields:
+                continue
+
+            # 获取源规则的值并设置到目标规则
+            value = getattr(source_rule, column_name)
+            setattr(target_rule, column_name, value)
 
         # 恢复目标规则的原始关联
         target_rule.source_chat_id = original_source_chat_id
         target_rule.target_chat_id = original_target_chat_id
+        target_rule.enable_sync = had_existing_sync or rule_syncs_success > 0
 
         # 保存更改
         session.commit()

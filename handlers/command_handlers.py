@@ -149,7 +149,7 @@ async def handle_switch_command(event):
 async def handle_add_command(event, command, parts):
     """处理 add 和 add_regex 命令"""
     message_text = event.message.text
-    logger.info(f"收到原始消息: {message_text}")
+    logger.info(f"收到原始消息，长度: {len(message_text) if message_text else 0}")
 
     if len(message_text.split(None, 1)) < 2:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
@@ -158,7 +158,7 @@ async def handle_add_command(event, command, parts):
 
     # 分离命令和参数部分
     _, args_text = message_text.split(None, 1)
-    logger.info(f"分离出的参数部分: {args_text}")
+    logger.info(f"分离出的参数长度: {len(args_text) if args_text else 0}")
 
     keywords = []
     if command in ['add', 'a']:
@@ -166,7 +166,7 @@ async def handle_add_command(event, command, parts):
             # 使用 shlex 来正确处理带引号的参数
             logger.info("开始使用 shlex 解析参数")
             keywords = shlex.split(args_text)
-            logger.info(f"shlex 解析结果: {keywords}")
+            logger.info(f"shlex 解析关键字数量: {len(keywords)}")
         except ValueError as e:
             logger.error(f"shlex 解析出错: {str(e)}")
             # 处理未闭合的引号等错误
@@ -244,7 +244,10 @@ async def handle_replace_command(event, parts):
         pattern = parts[0]
         content = parts[1] if len(parts) > 1 else ''
 
-        logger.info(f"解析替换命令参数: pattern='{pattern}', content='{content}'")
+        logger.info(
+            f"解析替换命令参数，pattern长度: {len(pattern) if pattern else 0}, "
+            f"content长度: {len(content) if content else 0}"
+        )
 
     except ValueError as e:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
@@ -338,7 +341,7 @@ async def handle_list_replace_command(event):
 async def handle_remove_command(event, command, parts):
     """处理 remove_keyword 和 remove_replace 命令"""
     message_text = event.message.text
-    logger.info(f"收到原始消息: {message_text}")
+    logger.info(f"收到原始消息，长度: {len(message_text) if message_text else 0}")
 
     # 如果是替换规则，保持原来的 ID 删除方式
     if command == 'remove_replace':
@@ -374,7 +377,7 @@ async def handle_remove_command(event, command, parts):
 
         # 分离命令和参数部分
         _, args_text = message_text.split(None, 1)
-        logger.info(f"分离出的参数部分: {args_text}")
+        logger.info(f"分离出的参数长度: {len(args_text) if args_text else 0}")
 
         try:
             # 使用 shlex 来正确处理带引号的参数
@@ -1337,6 +1340,7 @@ async def handle_copy_rule_command(event, command):
         # 复制规则同步表数据
         rule_syncs_success = 0
         rule_syncs_skip = 0
+        had_existing_sync = bool(target_rule.enable_sync or getattr(target_rule, 'rule_syncs', None))
 
         # 检查源规则是否有同步关系
         if hasattr(source_rule, 'rule_syncs') and source_rule.rule_syncs:
@@ -1362,13 +1366,20 @@ async def handle_copy_rule_command(event, command):
         # 复制规则设置
         # 获取ForwardRule模型的所有字段
         inspector = inspect(ForwardRule)
+        sync_related_fields = {'enable_sync'}
         for column in inspector.columns:
             column_name = column.key
-            if column_name not in ['id', 'source_chat_id', 'target_chat_id', 'source_chat', 'target_chat',
-                                      'keywords', 'replace_rules', 'media_types']:
-                # 获取源规则的值并设置到目标规则
-                value = getattr(source_rule, column_name)
-                setattr(target_rule, column_name, value)
+            if column_name in ['id', 'source_chat_id', 'target_chat_id', 'source_chat', 'target_chat',
+                               'keywords', 'replace_rules', 'media_types']:
+                continue
+            if column_name in sync_related_fields:
+                continue
+
+            # 获取源规则的值并设置到目标规则
+            value = getattr(source_rule, column_name)
+            setattr(target_rule, column_name, value)
+
+        target_rule.enable_sync = had_existing_sync or rule_syncs_success > 0
 
         session.commit()
 
@@ -1434,7 +1445,7 @@ async def handle_export_replace_command(event, client):
 async def handle_remove_all_keyword_command(event, command, parts):
     """处理 remove_all_keyword 命令"""
     message_text = event.message.text
-    logger.info(f"收到原始消息: {message_text}")
+    logger.info(f"收到原始消息，长度: {len(message_text) if message_text else 0}")
 
     if len(message_text.split(None, 1)) < 2:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
@@ -1443,7 +1454,7 @@ async def handle_remove_all_keyword_command(event, command, parts):
 
     # 分离命令和参数部分
     _, args_text = message_text.split(None, 1)
-    logger.info(f"分离出的参数部分: {args_text}")
+    logger.info(f"分离出的参数长度: {len(args_text) if args_text else 0}")
 
     try:
         # 使用 shlex 来正确处理带引号的参数
@@ -1489,20 +1500,28 @@ async def handle_remove_all_keyword_command(event, command, parts):
             if not keywords:
                 continue
 
-            rule_removed = 0
-            rule_removed_keywords = []
+            matched_indices = [
+                index for index, keyword in enumerate(keywords, start=1)
+                if keyword.keyword in keywords_to_remove
+            ]
+            if not matched_indices:
+                continue
 
-            # 删除匹配的关键字
-            for keyword in keywords:
-                if keyword.keyword in keywords_to_remove:
-                    logger.info(f"在规则 {rule.id} 中删除关键字: {keyword.keyword}")
-                    session.delete(keyword)
-                    rule_removed += 1
-                    rule_removed_keywords.append(keyword.keyword)
+            deleted_count, _remaining_keywords = await db_ops.delete_keywords(
+                session,
+                rule.id,
+                matched_indices,
+            )
+            if deleted_count <= 0:
+                continue
 
-            if rule_removed > 0:
-                removed_details[rule.id] = rule_removed_keywords
-                total_removed += rule_removed
+            matched_keywords = [
+                keyword.keyword for index, keyword in enumerate(keywords, start=1)
+                if index in matched_indices
+            ]
+            logger.info(f"规则 {rule.id} 删除关键字数量: {deleted_count}")
+            removed_details[rule.id] = matched_keywords
+            total_removed += deleted_count
 
         session.commit()
 
@@ -1529,7 +1548,7 @@ async def handle_remove_all_keyword_command(event, command, parts):
 async def handle_add_all_command(event, command, parts):
     """处理 add_all 和 add_regex_all 命令"""
     message_text = event.message.text
-    logger.info(f"收到原始消息: {message_text}")
+    logger.info(f"收到原始消息，长度: {len(message_text) if message_text else 0}")
 
     if len(message_text.split(None, 1)) < 2:
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
@@ -1538,7 +1557,7 @@ async def handle_add_all_command(event, command, parts):
 
     # 分离命令和参数部分
     _, args_text = message_text.split(None, 1)
-    logger.info(f"分离出的参数部分: {args_text}")
+    logger.info(f"分离出的参数长度: {len(args_text) if args_text else 0}")
 
     keywords = []
     if command == 'add_all':
@@ -1546,7 +1565,7 @@ async def handle_add_all_command(event, command, parts):
             # 使用 shlex 来正确处理带引号的参数
             logger.info("开始使用 shlex 解析参数")
             keywords = shlex.split(args_text)
-            logger.info(f"shlex 解析结果: {keywords}")
+            logger.info(f"shlex 解析关键字数量: {len(keywords)}")
         except ValueError as e:
             logger.error(f"shlex 解析出错: {str(e)}")
             # 处理未闭合的引号等错误
@@ -1642,7 +1661,8 @@ async def handle_replace_all_command(event, parts):
             success_count, duplicate_count = await db_ops.add_replace_rules(
                 session,
                 rule.id,
-                [(pattern, content)]  # 传入一个元组列表，每个元组包含 pattern 和 content
+                [pattern],
+                [content],
             )
 
             # 累计成功和重复的数量

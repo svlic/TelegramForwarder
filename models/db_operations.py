@@ -253,32 +253,25 @@ class DBOperations:
 
         # 处理单个规则的关键字添加
         for keyword in keywords:
-            try:
-                # 检查是否存在相同的关键字（考虑黑白名单）
-                existing_keyword = session.query(Keyword).filter(
-                    Keyword.rule_id == rule_id,
-                    Keyword.keyword == keyword,
-                    Keyword.is_blacklist == is_blacklist
-                ).first()
+            # 检查是否存在相同的关键字（考虑黑白名单）
+            existing_keyword = session.query(Keyword).filter(
+                Keyword.rule_id == rule_id,
+                Keyword.keyword == keyword,
+                Keyword.is_blacklist == is_blacklist
+            ).first()
 
-                if existing_keyword:
-                    duplicate_count += 1
-                    continue
-
-                new_keyword = Keyword(
-                    rule_id=rule_id,
-                    keyword=keyword,
-                    is_regex=is_regex,
-                    is_blacklist=is_blacklist
-                )
-                session.add(new_keyword)
-                session.flush()
-                success_count += 1
-            except Exception as e:
-                logger.error(f"添加关键字时出错: {str(e)}")
-                session.rollback()
+            if existing_keyword:
                 duplicate_count += 1
                 continue
+
+            new_keyword = Keyword(
+                rule_id=rule_id,
+                keyword=keyword,
+                is_regex=is_regex,
+                is_blacklist=is_blacklist
+            )
+            session.add(new_keyword)
+            success_count += 1
 
         # Sync to linked rules if enabled
         if rule.enable_sync:
@@ -408,31 +401,25 @@ class DBOperations:
         # 添加替换规则到主规则
         added_rules = []  # 存储成功添加的规则，用于后续同步
         for pattern, content in zip(patterns, contents):
-            try:
-                # 检查是否已存在相同的替换规则
-                existing_rule = session.query(ReplaceRule).filter(
-                    ReplaceRule.rule_id == rule_id,
-                    ReplaceRule.pattern == pattern,
-                    ReplaceRule.content == content
-                ).first()
+            # 检查是否已存在相同的替换规则
+            existing_rule = session.query(ReplaceRule).filter(
+                ReplaceRule.rule_id == rule_id,
+                ReplaceRule.pattern == pattern,
+                ReplaceRule.content == content
+            ).first()
 
-                if existing_rule:
-                    duplicate_count += 1
-                    continue
-
-                new_rule = ReplaceRule(
-                    rule_id=rule_id,
-                    pattern=pattern,
-                    content=content
-                )
-                session.add(new_rule)
-                session.flush()
-                success_count += 1
-                added_rules.append({'pattern': pattern, 'content': content})
-            except IntegrityError:
-                session.rollback()
+            if existing_rule:
                 duplicate_count += 1
                 continue
+
+            new_rule = ReplaceRule(
+                rule_id=rule_id,
+                pattern=pattern,
+                content=content
+            )
+            session.add(new_rule)
+            success_count += 1
+            added_rules.append({'pattern': pattern, 'content': content})
 
         # Sync to linked rules if enabled
         if rule.enable_sync and added_rules:
