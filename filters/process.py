@@ -12,6 +12,7 @@ from filters.edit_filter import EditFilter
 from filters.comment_button_filter import CommentButtonFilter
 from filters.init_filter import InitFilter
 from filters.reply_filter import ReplyFilter
+from filters.text_normalize_filter import TextNormalizeFilter
 logger = logging.getLogger(__name__)
 
 async def process_forward_rule(client, event, chat_id, rule):
@@ -37,6 +38,9 @@ async def process_forward_rule(client, event, chat_id, rule):
 
     # 延迟处理过滤器（如果启用了延迟处理）
     filter_chain.add_filter(DelayFilter())
+
+    # 添加文本标准化过滤器
+    filter_chain.add_filter(TextNormalizeFilter())
 
     # 添加关键字过滤器（如果消息不匹配关键字，会中断处理链）
     filter_chain.add_filter(KeywordFilter())
