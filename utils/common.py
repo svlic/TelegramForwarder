@@ -47,13 +47,26 @@ def normalize_channel_id(chat_id):
 
 
 def get_state_identity(event):
-    chat_id = abs(event.chat_id)
-    if isinstance(event.chat, types.Channel):
-        sender_id = getattr(event, 'sender_id', None)
+    chat_id = getattr(event, 'chat_id', None)
+    if chat_id is None:
+        raise ValueError('event.chat_id is required for state identity')
+
+    normalized_chat_id = abs(chat_id)
+    chat = getattr(event, 'chat', None)
+    sender_id = getattr(event, 'sender_id', None)
+
+    if isinstance(chat, types.Channel):
         if sender_id is not None:
-            return sender_id, normalize_channel_id(chat_id)
-        return int(os.getenv('USER_ID')), normalize_channel_id(chat_id)
-    return event.sender_id, chat_id
+            return sender_id, normalize_channel_id(normalized_chat_id)
+
+        user_id = os.getenv('USER_ID')
+        if not user_id:
+            raise ValueError('USER_ID is required when channel sender_id is unavailable')
+        return int(user_id), normalize_channel_id(normalized_chat_id)
+
+    if sender_id is None:
+        raise ValueError('event.sender_id is required for non-channel state identity')
+    return sender_id, normalized_chat_id
 
 
 def extract_channel_id_for_url(chat_id):
@@ -316,17 +329,22 @@ async def is_admin(event):
 
 
         if message.is_channel and not message.is_group:
+            user_id = getattr(event, 'sender_id', None)
+            if user_id is None:
+                logger.info('频道事件缺少 sender_id，拒绝管理员操作')
+                return False
+
+            if user_id not in bot_admins:
+                logger.info(f'用户 {user_id} 不在管理员列表中，已忽略')
+                return False
+
             # 获取频道管理员列表（使用缓存）
             channel_admins = await get_channel_admins(client, event.chat_id)
             if channel_admins is None:
                 return False
 
-
-
-            # 检查机器人管理员是否在频道管理员列表中
-            admin_in_channel = any(admin_id in channel_admins for admin_id in bot_admins)
-            if not admin_in_channel:
-                logger.info(f'机器人管理员不在频道管理员列表中，已忽略')
+            if user_id not in channel_admins:
+                logger.info(f'用户 {user_id} 不在频道管理员列表中，已忽略')
                 return False
             return True
         else:
@@ -353,9 +371,14 @@ async def get_ai_settings_text(rule):
     ai_prompt = rule.ai_prompt or os.getenv('DEFAULT_AI_PROMPT', '未设置')
     summary_prompt = rule.summary_prompt or os.getenv('DEFAULT_SUMMARY_PROMPT', '未设置')
 
+    def summarize_prompt(prompt_value):
+        if not prompt_value or prompt_value == '未设置':
+            return '未设置'
+        return f'已配置（长度 {len(prompt_value)}）'
+
     return AI_SETTINGS_TEXT.format(
-        ai_prompt=ai_prompt,
-        summary_prompt=summary_prompt
+        ai_prompt=summarize_prompt(ai_prompt),
+        summary_prompt=summarize_prompt(summary_prompt)
     )
 
 async def get_sender_info(event, rule_id):
@@ -519,17 +542,17 @@ async def check_keywords(rule, message_text, event = None):
         # 黑名单反转为白名单，合并到白名单
         effective_whitelist = base_whitelist + base_blacklist
         effective_blacklist = []
-        logger.info(f"黑名单已反转并合并到白名单，有效白名单: {[k.keyword for k in effective_whitelist]}")
+        logger.info(f"黑名单已反转并合并到白名单，有效白名单数量: {len(effective_whitelist)}")
     elif rule.enable_reverse_whitelist:
         # 白名单反转为黑名单，合并到黑名单
         effective_whitelist = []
         effective_blacklist = base_blacklist + base_whitelist
-        logger.info(f"白名单已反转并合并到黑名单，有效黑名单: {[k.keyword for k in effective_blacklist]}")
+        logger.info(f"白名单已反转并合并到黑名单，有效黑名单数量: {len(effective_blacklist)}")
     else:
         effective_whitelist = base_whitelist
         effective_blacklist = base_blacklist
-        logger.info(f"有效白名单关键词: {[k.keyword for k in effective_whitelist]}")
-        logger.info(f"有效黑名单关键词: {[k.keyword for k in effective_blacklist]}")
+        logger.info(f"有效白名单关键词数量: {len(effective_whitelist)}")
+        logger.info(f"有效黑名单关键词数量: {len(effective_blacklist)}")
 
     # 仅白名单模式
     if forward_mode == ForwardMode.WHITELIST:
@@ -560,7 +583,7 @@ async def process_whitelist_mode(whitelist_keywords, message_text):
 
     for keyword in whitelist_keywords:
         if await check_keyword_match(keyword, message_text):
-            logger.info(f"匹配到白名单关键词 '{keyword.keyword}'，允许转发")
+            logger.info("匹配到白名单关键词，允许转发")
             return True
 
     logger.info("未匹配到任何白名单关键词，不转发")
@@ -572,7 +595,7 @@ async def process_blacklist_mode(blacklist_keywords, message_text):
 
     for keyword in blacklist_keywords:
         if await check_keyword_match(keyword, message_text):
-            logger.info(f"匹配到黑名单关键词 '{keyword.keyword}'，不转发")
+            logger.info("匹配到黑名单关键词，不转发")
             return False
 
     logger.info("未匹配到任何黑名单关键词，允许转发")
@@ -580,17 +603,17 @@ async def process_blacklist_mode(blacklist_keywords, message_text):
 
 async def check_keyword_match(keyword, message_text):
     """检查单个关键词是否匹配"""
-    logger.info(f"检查关键字: {keyword.keyword} (正则: {keyword.is_regex})")
+    logger.info(f"检查关键字，正则模式: {keyword.is_regex}")
     if keyword.is_regex:
         try:
             if re.search(keyword.keyword, message_text):
-                logger.info(f"正则匹配成功: {keyword.keyword}")
+                logger.info("正则匹配成功")
                 return True
         except re.error:
-            logger.error(f"正则表达式错误: {keyword.keyword}")
+            logger.error("正则表达式错误")
     else:
         if keyword.keyword.lower() in message_text.lower():
-            logger.info(f"关键字匹配成功: {keyword.keyword}")
+            logger.info("关键字匹配成功")
             return True
     return False
 
@@ -638,7 +661,7 @@ async def process_whitelist_then_blacklist_mode(whitelist_keywords, blacklist_ke
 
     for keyword in blacklist_keywords:
         if await check_keyword_match(keyword, message_text):
-            logger.info(f"匹配到黑名单关键词 '{keyword.keyword}'，不转发")
+            logger.info("匹配到黑名单关键词，不转发")
             return False
 
     logger.info("所有条件都满足，允许转发")
@@ -649,7 +672,7 @@ async def process_blacklist_then_whitelist_mode(blacklist_keywords, whitelist_ke
 
     for keyword in blacklist_keywords:
         if await check_keyword_match(keyword, message_text):
-            logger.info(f"匹配到黑名单关键词 '{keyword.keyword}'，不转发")
+            logger.info("匹配到黑名单关键词，不转发")
             return False
 
     whitelist_match = False
