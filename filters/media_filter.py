@@ -57,6 +57,9 @@ class MediaFilter(BaseFilter):
             with get_db_session() as session:
                 media_types = session.query(MediaTypes).filter_by(rule_id=rule.id).first()
 
+        context.media_group_messages = []
+        context.ai_media_messages = []
+
         # 收集媒体组的所有消息
         total_media_count = 0  # 总媒体数量
         blocked_media_count = 0  # 被屏蔽的媒体数量
@@ -249,22 +252,29 @@ class MediaFilter(BaseFilter):
         if not document:
             return False
 
-        if media_types.document:
-            logger.info('媒体类型为文档，已被屏蔽')
-            return True
-
+        has_specific_media_type = False
         for attr in getattr(document, 'attributes', []):
             attr_type = type(attr).__name__
-            if attr_type == 'DocumentAttributeVideo' and media_types.video:
-                logger.info('媒体类型为视频，已被屏蔽')
-                return True
+            if attr_type == 'DocumentAttributeVideo':
+                has_specific_media_type = True
+                if media_types.video:
+                    logger.info('媒体类型为视频，已被屏蔽')
+                    return True
             if attr_type == 'DocumentAttributeAudio':
+                has_specific_media_type = True
                 if getattr(attr, 'voice', None) and media_types.voice:
                     logger.info('媒体类型为语音，已被屏蔽')
                     return True
-                if media_types.audio:
+                if not getattr(attr, 'voice', None) and media_types.audio:
                     logger.info('媒体类型为音频，已被屏蔽')
                     return True
+
+        if has_specific_media_type:
+            return False
+
+        if media_types.document:
+            logger.info('媒体类型为文档，已被屏蔽')
+            return True
 
         return False
 

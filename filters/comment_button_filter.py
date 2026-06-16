@@ -5,7 +5,6 @@ from telethon import Button
 from filters.base_filter import BaseFilter
 from telethon.tl.functions.channels import GetFullChannelRequest
 from utils.common import get_main_module, extract_channel_id_for_url, collect_media_group_messages
-from difflib import SequenceMatcher
 logger = logging.getLogger(__name__)
 
 class CommentButtonFilter(BaseFilter):
@@ -116,83 +115,7 @@ class CommentButtonFilter(BaseFilter):
                     comment_link = f"https://t.me/c/{channel_id_str}/{channel_msg_id}?comment=1"
                     logger.info(f"构建私有频道评论区链接: {comment_link}")
 
-
-
-                # 如果可以获取群组消息，尝试找到精确匹配以提供更好的体验
-                try:
-                    # 查找关联群组中对应的消息 - 使用用户客户端
-                    logger.info(f"尝试使用用户客户端获取群组 {linked_group_id} 的消息")
-                    group_messages = await client.get_messages(linked_group, limit=5)
-                    logger.info(f"成功获取关联群组 {linked_group_id} 的 {len(group_messages)} 条消息")
-
-                    # 尝试查找内容相同的消息
-                    matched_msg = None
-
-                    # 1. 先尝试完全匹配内容
-                    original_message = context.original_message_text
-                    if original_message:
-                        logger.info(f"尝试查找内容完全匹配的消息，原始内容长度: {len(original_message)}")
-
-                        for msg in group_messages:
-                            if hasattr(msg, 'message') and msg.message and msg.message == original_message:
-                                matched_msg = msg
-                                logger.info(f"找到完全匹配消息: 群组消息ID {msg.id}")
-                                break
-
-                    # 2. 如果无法完全匹配，尝试使用SequenceMatcher进行前20字符相似度匹配
-                    if not matched_msg and original_message and len(original_message) > 20:
-
-                        message_start = original_message[:20]
-                        logger.info(f"尝试对前20字符进行相似度匹配: '{message_start}'")
-
-                        for msg in group_messages:
-                            if hasattr(msg, 'message') and msg.message and len(msg.message) > 20:
-                                msg_start = msg.message[:20]
-                                similarity = SequenceMatcher(None, message_start, msg_start).ratio()
-                                if similarity > 0.75:
-                                    matched_msg = msg
-                                    logger.info(f"找到相似度匹配消息: 群组消息ID {msg.id}, 前20字符相似度: {similarity}")
-                                    break
-
-                    # 3. 如果没找到匹配消息，尝试基于时间匹配
-                    if not matched_msg and hasattr(event.message, 'date'):
-                        message_time = event.message.date
-                        logger.info(f"尝试基于时间匹配，原消息时间: {message_time}")
-
-                        # 获取消息时间前后1分钟内的消息
-                        time_window = 1  # 分钟
-
-                        for msg in group_messages:
-                            if hasattr(msg, 'date'):
-                                time_diff = abs((msg.date - message_time).total_seconds())
-                                if time_diff < time_window * 60:
-                                    matched_msg = msg
-                                    logger.info(f"找到时间接近的消息: 群组消息ID {msg.id}, 时间差: {time_diff}秒")
-                                    break
-
-                    # 4. 如果仍未找到，使用最新消息
-                    if not matched_msg:
-                        logger.info("未找到匹配消息，尝试使用最新消息")
-                        # 使用最新消息作为默认值
-                        if group_messages:
-                            matched_msg = group_messages[0]
-                            logger.info(f"使用最新消息: 群组消息ID {matched_msg.id}")
-
-                    # 如果找到了匹配消息，更新链接
-                    if matched_msg:
-                        group_msg_id = matched_msg.id
-                        if channel_username:
-                            # 公开频道 - 使用用户名链接
-                            comment_link = f"https://t.me/{channel_username}/{channel_msg_id}?comment={group_msg_id}"
-                        else:
-                            # 私有频道 - 使用ID链接
-                            comment_link = f"https://t.me/c/{channel_id_str}/{channel_msg_id}?comment={group_msg_id}"
-                        logger.info(f"更新为精确评论区链接: {comment_link}")
-
-                except Exception as e:
-                    logger.warning(f"获取群组消息失败，可能是因为未加入群组: {str(e)}")
-                    logger.info("将使用基本评论区链接")
-                    # 保持使用基本的comment=1链接
+                logger.info("使用稳定的 Telegram comment=1 评论区链接，跳过模糊匹配")
 
                 # 创建群组备用链接
                 group_link = None

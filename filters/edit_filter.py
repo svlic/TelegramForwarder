@@ -35,8 +35,12 @@ class EditFilter(BaseFilter):
             logger.debug(f"当前规则非编辑模式 (当前模式: {rule.handle_mode})，跳过编辑处理")
             return True
 
-        if not context.should_forward or getattr(context, 'media_blocked', False) or context.skipped_media:
-            logger.info("消息已被前置过滤器标记为不转发或媒体受限，跳过编辑")
+        if not context.should_forward:
+            logger.info("消息已被前置过滤器标记为不转发，跳过编辑")
+            return False
+
+        if getattr(context, 'media_blocked', False) and not context.message_text:
+            logger.info("媒体被屏蔽且没有可保留的文本内容，跳过编辑")
             return False
             
         # 检查是否为频道消息

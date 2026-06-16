@@ -152,7 +152,8 @@ class SenderFilter(BaseFilter):
 
                 if context.skipped_media:
                     channel_id_for_url = extract_channel_id_for_url(event.chat_id)
-                    context.original_link = f"\n原始消息: https://t.me/c/{channel_id_for_url}/{event.message.id}"
+                    primary_message_id = getattr(context.primary_message, 'id', None) or event.message.id
+                    context.original_link = f"\n原始消息: https://t.me/c/{channel_id_for_url}/{primary_message_id}"
                 # 添加时间信息和原始链接
                 caption_text += context.time_info + context.original_link
 
@@ -221,7 +222,8 @@ class SenderFilter(BaseFilter):
             file_size = context.skipped_media[0][1]
             file_name = context.skipped_media[0][2]
             channel_id_for_url = extract_channel_id_for_url(event.chat_id)
-            original_link = f"\n原始消息: https://t.me/c/{channel_id_for_url}/{event.message.id}"
+            primary_message_id = getattr(context.primary_message, 'id', None) or event.message.id
+            original_link = f"\n原始消息: https://t.me/c/{channel_id_for_url}/{primary_message_id}"
 
             text_to_send = context.message_text or ''
             text_to_send += f"\n\n⚠️ 媒体文件 {file_name} ({file_size}MB) 超过大小限制"
