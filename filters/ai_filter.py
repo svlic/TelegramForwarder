@@ -221,7 +221,7 @@ async def _ai_handle(message: str, rule, image_files=None) -> str:
             if '{Message}' in prompt:
                 prompt = prompt.replace('{Message}', message)
 
-        logger.info(f"处理后的AI提示词: {prompt}")
+        logger.info(f"处理后的AI提示词长度: {len(prompt) if prompt else 0}")
 
         # 处理图片上传 - 新版本，支持内存中的图片数据
         img_data = []
@@ -266,7 +266,7 @@ async def _ai_handle(message: str, rule, image_files=None) -> str:
             model=rule.ai_model,
             images=img_data if img_data else None
         )
-        logger.info(f"AI处理完成: {processed_text}")
+        logger.info(f"AI处理完成，输出长度: {len(processed_text) if processed_text else 0}")
         return processed_text
 
     except Exception as e:

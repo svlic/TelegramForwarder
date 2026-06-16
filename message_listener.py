@@ -158,7 +158,8 @@ async def handle_user_message(event, bot_client):
         if event.message.grouped_id:
             logger.info(f'收到媒体组消息 来自聊天: {source_chat.name} ({chat_id}) 组ID: {event.message.grouped_id}')
         else:
-            logger.info(f'收到新消息 来自聊天: {source_chat.name} ({chat_id}) 内容: {event.message.text}')
+            content_length = len(event.message.text or '')
+            logger.info(f'收到新消息 来自聊天: {source_chat.name} ({chat_id}) 文本长度: {content_length}')
             
         # 添加日志：处理规则
         logger.info(f'找到 {len(rules)} 条转发规则')
@@ -197,6 +198,6 @@ async def handle_bot_message(event, bot_client):
         logger.exception(e)
 
 async def clear_group_cache(group_key, delay=300):
-    await asyncio.sleep(0)
+    await asyncio.sleep(delay)
     async with _PROCESSED_GROUPS_LOCK:
         PROCESSED_GROUPS.pop(group_key, None)
