@@ -1,8 +1,8 @@
 import logging
-import os
 import pytz
 from filters.base_filter import BaseFilter
 from utils.common import extract_channel_id_for_url
+from utils.constants import DEFAULT_TIMEZONE
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,7 @@ class InfoFilter(BaseFilter):
 
         if rule.is_original_time:
             try:
-                timezone = pytz.timezone(os.getenv('DEFAULT_TIMEZONE', 'Asia/Shanghai'))
+                timezone = pytz.timezone(DEFAULT_TIMEZONE)
                 message = getattr(event, 'message', None)
                 if message and hasattr(message, 'date'):
                     local_time = message.date.astimezone(timezone)
