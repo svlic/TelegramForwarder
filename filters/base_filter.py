@@ -43,4 +43,4 @@ class BaseFilter(ABC):
         Returns:
             bool: 表示是否应该继续处理消息
         """
-        pass 
+        ...
