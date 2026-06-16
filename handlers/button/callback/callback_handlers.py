@@ -261,6 +261,9 @@ async def callback_toggle_current(event, rule_id, session, message, data):
 
     target_chat = rule.target_chat
     source_chat = rule.source_chat
+    if not target_chat or not source_chat:
+        await event.answer('规则关联的聊天不存在')
+        return
 
     # 检查是否已经是当前选中的规则
     if target_chat.current_add_id == source_chat.telegram_chat_id:
@@ -463,7 +466,10 @@ async def callback_page_rule(event, page_str, session, message, data):
         for rule in rules:
             source_chat = rule.source_chat
             target_chat = rule.target_chat
-            
+            if not source_chat or not target_chat:
+                logger.warning(f'规则 {rule.id} 缺少关联聊天，跳过展示')
+                continue
+
             rule_desc = (
                 f'<b>ID: {rule.id}</b>\n'
                 f'<blockquote>来源: {source_chat.name} ({source_chat.telegram_chat_id})\n'
@@ -605,7 +611,10 @@ async def handle_callback(event):
                     return
 
             if action in MULTI_RULE_CALLBACK_ACTIONS:
-                rule_ids = [part for part in rule_id.split(':') if part]
+                if action == 'toggle_rule_sync':
+                    rule_ids = [part for part in rule_id.split(':')[:2] if part]
+                else:
+                    rule_ids = [part for part in rule_id.split(':') if part]
                 if not await all_rules_belong_to_current_chat(session, event, rule_ids):
                     await event.answer('不能操作不属于当前聊天的规则')
                     return

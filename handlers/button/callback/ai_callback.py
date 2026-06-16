@@ -41,10 +41,11 @@ async def _start_ai_prompt_state(event, rule_id, session, message, *, state_pref
 
     try:
         current_prompt = getattr(rule, prompt_attr, None) or os.getenv(default_env_key, '未设置')
+        prompt_preview = '未设置' if current_prompt == '未设置' else f'已配置（长度 {len(current_prompt)}）'
         await message.edit(
             f"请发送新的{prompt_name}\n"
             f"当前规则ID: `{rule_id}`\n"
-            f"当前{prompt_name}：\n\n`{current_prompt}`\n\n"
+            f"当前{prompt_name}：{prompt_preview}\n\n"
             f"5分钟内未设置将自动取消",
             buttons=[[Button.inline("取消", f"{cancel_action}:{rule_id}")]]
         )
@@ -135,9 +136,7 @@ async def callback_select_time(event, rule_id, session, message, data):
 
                 # 更新时间
                 rule.summary_time = time
-                session.commit()
-                logger.info(f"数据库更新成功: {old_time} -> {time}")
-                
+
                 # 检查是否启用了同步功能
                 if rule.enable_sync:
                     logger.info(f"规则 {rule.id} 启用了同步功能，正在同步总结时间设置到关联规则")
@@ -162,37 +161,34 @@ async def callback_select_time(event, rule_id, session, message, data):
                             
                             # 设置新时间
                             target_rule.summary_time = time
-                            
-                            # 如果目标规则启用了总结功能，也更新它的调度
-                            if target_rule.is_summary:
-                                logger.info(f"目标规则 {sync_rule_id} 启用了总结功能，更新其调度任务")
-                                main = await get_main_module()
-                                if hasattr(main, 'scheduler') and main.scheduler:
-                                    await main.scheduler.schedule_rule(target_rule)
-                                    logger.info(f"目标规则调度任务更新成功，新时间: {time}")
-                                else:
-                                    logger.warning("调度器未初始化")
-                            
                             logger.info(f"同步规则 {sync_rule_id} 的总结时间从 {old_target_time} 到 {time}")
                         except Exception as e:
                             logger.error(f"同步总结时间到规则 {sync_rule_id} 时出错: {str(e)}")
                             continue
                     
-                    # 提交所有同步更改
-                    session.commit()
-                    logger.info("所有同步总结时间更改已提交")
+                    logger.info("所有同步总结时间更改已写入当前会话")
+
+                session.commit()
+                logger.info(f"数据库更新成功: {old_time} -> {time}")
 
                 # 如果总结功能已开启，重新调度任务
-                if rule.is_summary:
-                    logger.info("规则已启用总结功能，开始更新调度任务")
-                    main = await get_main_module()
-                    if hasattr(main, 'scheduler') and main.scheduler:
+                main = await get_main_module()
+                if hasattr(main, 'scheduler') and main.scheduler:
+                    if rule.is_summary:
+                        logger.info("规则已启用总结功能，开始更新调度任务")
                         await main.scheduler.schedule_rule(rule)
                         logger.info(f"调度任务更新成功，新时间: {time}")
                     else:
-                        logger.warning("调度器未初始化")
+                        logger.info("规则未启用总结功能，跳过当前规则调度任务更新")
+
+                    if rule.enable_sync:
+                        for sync_rule in sync_rules:
+                            target_rule = session.get(ForwardRule, sync_rule.sync_rule_id)
+                            if target_rule and target_rule.is_summary:
+                                await main.scheduler.schedule_rule(target_rule)
+                                logger.info(f"目标规则调度任务更新成功，新时间: {time}, 规则: {target_rule.id}")
                 else:
-                    logger.info("规则未启用总结功能，跳过调度任务更新")
+                    logger.warning("调度器未初始化")
 
                 await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
                 logger.info("界面更新完成")
@@ -307,8 +303,10 @@ async def callback_summary_now(event, rule_id, session, message, data):
         main = await get_main_module()
         user_client = main.user_client
         bot_client = main.bot_client
+        scheduler = getattr(main, 'scheduler', None)
+        if scheduler is None:
+            scheduler = SummaryScheduler(user_client, bot_client)
 
-        scheduler = SummaryScheduler(user_client, bot_client)
         await event.answer("开始执行总结，请稍候...")
         
         await message.edit(

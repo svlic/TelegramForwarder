@@ -67,8 +67,8 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
         if rule:
             old_prompt = getattr(rule, field_name) if hasattr(rule, field_name) else None
             new_prompt = event.message.text
-            logger.info(f"找到规则,原提示词/模板:{old_prompt}")
-            logger.info(f"准备更新为新提示词/模板:{new_prompt}")
+            logger.info(f"找到规则,原提示词/模板长度:{len(old_prompt) if old_prompt else 0}")
+            logger.info(f"准备更新为新提示词/模板长度:{len(new_prompt) if new_prompt else 0}")
             
             setattr(rule, field_name, new_prompt)
             session.commit()
@@ -99,7 +99,10 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
                         # 设置新提示词
                         setattr(target_rule, field_name, new_prompt)
                         
-                        logger.info(f"同步规则 {sync_rule_id} 的{prompt_type}提示词/模板从 '{old_target_prompt}' 到 '{new_prompt}'")
+                        logger.info(
+                            f"同步规则 {sync_rule_id} 的{prompt_type}提示词/模板长度从 "
+                            f"{len(old_target_prompt) if old_target_prompt else 0} 到 {len(new_prompt) if new_prompt else 0}"
+                        )
                     except Exception as e:
                         logger.error(f"同步{prompt_type}提示词/模板到规则 {sync_rule_id} 时出错: {str(e)}")
                         continue
