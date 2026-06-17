@@ -164,9 +164,6 @@ def migrate_db(engine):
     forward_rules_columns = {column['name'] for column in inspector.get_columns('forward_rules')}
     keyword_columns = {column['name'] for column in inspector.get_columns('keywords')}
     
-    # 连接数据库
-    connection = engine.connect()
-        
     try:
         with engine.connect() as connection:
 

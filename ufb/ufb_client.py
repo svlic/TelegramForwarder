@@ -32,10 +32,6 @@ class UFBClient:
         # 确保配置目录存在
         self.config_dir.mkdir(parents=True, exist_ok=True)
 
-    async def ensure_config_dir(self):
-        """确保配置目录存在"""
-        self.config_dir.mkdir(parents=True, exist_ok=True)
-
     def load_config(self) -> Dict[str, Any]:
         """加载本地配置"""
         if self.config_path.exists():
@@ -169,7 +165,7 @@ class UFBClient:
     async def start(self, server_url: Optional[str] = None, token: Optional[str] = None):
         """启动客户端"""
         logger.info("启动客户端")
-        await self.ensure_config_dir()
+        self.config_dir.mkdir(parents=True, exist_ok=True)
         
         if server_url and token:
             await self.connect(server_url, token)
