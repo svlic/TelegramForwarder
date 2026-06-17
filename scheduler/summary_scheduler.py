@@ -158,15 +158,15 @@ class SummaryScheduler:
 
                 async with self.request_semaphore:
                     messages = []
-                    current_offset = 0
+                    offset_id = 0
 
                     while True:
-                        batch = []  # 移到循环外部
+                        batch = []
                         messages_batch = await self.user_client.get_messages(
                             source_chat_id,
                             limit=self.batch_size,
                             offset_date=end_time,
-                            offset_id=current_offset,
+                            offset_id=offset_id,
                             reverse=False
                         )
 
@@ -201,9 +201,12 @@ class SummaryScheduler:
                             messages.extend(batch)
                             logger.info(f'规则 {rule_id} 当前批次添加了 {len(batch)} 条消息，总消息数: {len(messages)}')
 
-                        # 更新offset为最后一条消息的ID
                         if messages_batch:
-                            current_offset = messages_batch[-1].id
+                            next_offset_id = min(message.id for message in messages_batch)
+                            if next_offset_id == offset_id:
+                                logger.warning(f'规则 {rule_id} 分页游标未推进，停止获取以避免死循环')
+                                break
+                            offset_id = next_offset_id
                         else:
                             break
 
