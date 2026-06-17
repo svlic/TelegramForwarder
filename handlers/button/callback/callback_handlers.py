@@ -54,7 +54,7 @@ from handlers.button.button_helpers import create_sync_rule_buttons, create_othe
 logger = logging.getLogger(__name__)
 
 
-async def callback_switch(event, rule_id, session, message, data):
+async def callback_switch(event, source_chat_telegram_id, session, message, data):
     """处理切换源聊天的回调"""
     # 获取当前聊天
     current_chat = await event.get_chat()
@@ -67,12 +67,11 @@ async def callback_switch(event, rule_id, session, message, data):
         return
 
     # 如果已经选中了这个聊天，就不做任何操作
-    if current_chat_db.current_add_id == rule_id:
+    if current_chat_db.current_add_id == source_chat_telegram_id:
         await event.answer('已经选中该聊天')
         return
 
-    # 更新当前选中的源聊天
-    current_chat_db.current_add_id = rule_id  # 这里的 rule_id 实际上是源聊天的 telegram_chat_id
+    current_chat_db.current_add_id = source_chat_telegram_id
     session.commit()
 
     # 更新按钮显示
@@ -83,7 +82,7 @@ async def callback_switch(event, rule_id, session, message, data):
     buttons = []
     for rule in rules:
         source_chat = rule.source_chat
-        current = source_chat.telegram_chat_id == rule_id
+        current = source_chat.telegram_chat_id == source_chat_telegram_id
         button_text = f'{"✓ " if current else ""}来自: {source_chat.name}'
         callback_data = f"switch:{source_chat.telegram_chat_id}"
         buttons.append([Button.inline(button_text, callback_data)])
@@ -95,7 +94,7 @@ async def callback_switch(event, rule_id, session, message, data):
             raise  # 如果是其他错误就继续抛出
 
     source_chat = session.query(Chat).filter(
-        Chat.telegram_chat_id == rule_id
+        Chat.telegram_chat_id == source_chat_telegram_id
     ).first()
     await event.answer(f'已切换到: {source_chat.name if source_chat else "未知聊天"}')
 

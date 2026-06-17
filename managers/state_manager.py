@@ -2,6 +2,7 @@ import logging
 import asyncio
 from typing import Dict, Tuple, Optional
 from telethon.tl.custom import Message
+from utils.common import normalize_state_chat_id
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ class StateManager:
         logger.info("StateManager 初始化")
     
     async def set_state(self, user_id: int, chat_id: int, state: str, message: Optional[Message] = None, state_type: Optional[str] = None, timeout_minutes: int = 5) -> None:
-        key = (user_id, chat_id)
+        key = (int(user_id), normalize_state_chat_id(chat_id))
         async with self._lock:
             self._states[key] = (state, message, state_type)
             if key in self._timeout_tasks:
@@ -35,7 +36,7 @@ class StateManager:
             pass
     
     async def get_state(self, user_id: int, chat_id: int) -> Optional[Tuple[str, Optional[Message], Optional[str]]]:
-        key = (user_id, chat_id)
+        key = (int(user_id), normalize_state_chat_id(chat_id))
         async with self._lock:
             state_data = self._states.get(key)
         if state_data:
@@ -50,7 +51,7 @@ class StateManager:
         return None, None, None
     
     async def clear_state(self, user_id: int, chat_id: int) -> None:
-        key = (user_id, chat_id)
+        key = (int(user_id), normalize_state_chat_id(chat_id))
         async with self._lock:
             if key in self._states:
                 del self._states[key]

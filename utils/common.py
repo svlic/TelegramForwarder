@@ -46,12 +46,22 @@ def normalize_channel_id(chat_id):
     return int(chat_id_str)
 
 
+def normalize_state_chat_id(chat_id):
+    chat_id_int = int(chat_id)
+    chat_id_str = str(chat_id_int)
+    if chat_id_str.startswith('-100') or chat_id_str.startswith('100'):
+        return normalize_channel_id(chat_id_int)
+    if chat_id_int < 0:
+        return chat_id_int
+    return abs(chat_id_int)
+
+
 def get_state_identity(event):
     chat_id = getattr(event, 'chat_id', None)
     if chat_id is None:
         raise ValueError('event.chat_id is required for state identity')
 
-    normalized_chat_id = abs(chat_id)
+    normalized_chat_id = normalize_state_chat_id(chat_id)
     chat = getattr(event, 'chat', None)
     sender_id = getattr(event, 'sender_id', None)
 

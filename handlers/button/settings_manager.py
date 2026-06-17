@@ -414,11 +414,11 @@ async def create_buttons(rule):
     # 获取当前聊天的当前选中规则
     with get_db_session() as session:
         target_chat = rule.target_chat
-        current_add_id = target_chat.current_add_id
+        current_source_chat_telegram_id = target_chat.current_add_id
         source_chat = rule.source_chat
 
-        # 添加规则切换按钮
-        is_current = current_add_id == source_chat.telegram_chat_id
+        # current_add_id stores the selected source chat telegram_chat_id for this target chat.
+        is_current = current_source_chat_telegram_id == source_chat.telegram_chat_id
         buttons.append([
             Button.inline(
                 f"{'✅ ' if is_current else ''}应用当前规则",
