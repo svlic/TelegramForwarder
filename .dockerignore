@@ -4,7 +4,6 @@
 
 # 忽略数据库文件
 *.db
-db/forward.db1
 
 # 忽略 Python 生成的缓存文件
 **/__pycache__/

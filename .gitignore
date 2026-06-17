@@ -25,9 +25,7 @@ ufb/config/config.json
 /.config
 /images/logo/svg
 /test
-db/forward.db1
 * copy.py
 /temp
-使用场景示例.md
 /logs
 logs/telegram_forwarder.log

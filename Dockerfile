@@ -8,9 +8,6 @@ RUN apt-get update && apt-get install -y \
     tzdata \
     && ln -fs /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
     && dpkg-reconfigure -f noninteractive tzdata \
-    && apt-get install -y \
-    gcc \
-    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制依赖文件并安装
