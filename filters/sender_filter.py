@@ -184,13 +184,14 @@ class SenderFilter(BaseFilter):
                     for _message, size, name in context.skipped_media:
                         caption_text += f"\n\n媒体文件 {name if name else '未命名文件'} ({size}MB) 超过大小限制"
                     caption_text += context.time_info + context.original_link
-                    await client.send_message(
+                    sent_message = await client.send_message(
                         target_chat_id,
                         caption_text,
                         parse_mode=parse_mode,
                         link_preview=True,
                         buttons=context.buttons
                     )
+                    context.forwarded_messages = [sent_message]
                 elif context.message_text:
                     logger.info('媒体组所有媒体被屏蔽但有文本，降级发送纯文本消息')
                     await self._send_text_message(context, target_chat_id, parse_mode)
@@ -231,13 +232,14 @@ class SenderFilter(BaseFilter):
 
             text_to_send += original_link
 
-            await client.send_message(
+            sent_message = await client.send_message(
                 target_chat_id,
                 text_to_send,
                 parse_mode=parse_mode,
                 link_preview=True,
                 buttons=context.buttons
             )
+            context.forwarded_messages = [sent_message]
             logger.info(f'媒体文件超过大小限制，仅转发文本')
             return
 
@@ -255,7 +257,7 @@ class SenderFilter(BaseFilter):
                     context.original_link
                 )
 
-                await client.send_file(
+                sent_message = await client.send_file(
                     target_chat_id,
                     file_path,
                     caption=caption,
@@ -267,6 +269,7 @@ class SenderFilter(BaseFilter):
                         PreviewMode.FOLLOW: context.event.message.media is not None
                     }[rule.is_preview]
                 )
+                context.forwarded_messages = [sent_message]
                 logger.info(f'媒体消息已发送')
             except Exception as e:
                 logger.error(f'发送媒体消息时出错: {str(e)}')
@@ -296,11 +299,12 @@ class SenderFilter(BaseFilter):
             PreviewMode.FOLLOW: context.event.message.media is not None  # 跟随原消息
         }[rule.is_preview]
 
-        await client.send_message(
+        sent_message = await client.send_message(
             target_chat_id,
             str(message_text),
             parse_mode=parse_mode,
             link_preview=link_preview,
             buttons=context.buttons
         )
+        context.forwarded_messages = [sent_message]
         logger.info(f'{"带预览的" if link_preview else "无预览的"}文本消息已发送')
