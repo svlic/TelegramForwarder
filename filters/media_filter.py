@@ -3,7 +3,7 @@ import os
 import asyncio
 from utils.media import get_media_size
 from utils.constants import TEMP_DIR
-from utils.common import get_db_ops, collect_media_group_messages
+from utils.common import get_db_ops, collect_media_group_messages, select_primary_media_group_message
 from filters.base_filter import BaseFilter
 from models.models import MediaTypes
 from models.models import get_db_session
@@ -70,12 +70,14 @@ class MediaFilter(BaseFilter):
                     if rule.enable_media_type_filter and media_types and message.media:
                         if await self._is_media_type_blocked(message.media, media_types):
                             logger.info(f'媒体类型被屏蔽，跳过消息 ID={message.id}')
+                            context.blocked_media_message_ids.add(message.id)
                             blocked_media_count += 1
                             continue
 
                     if rule.enable_extension_filter and message.media:
                         if not await self._is_media_extension_allowed(rule, message.media):
                             logger.info(f'媒体扩展名被屏蔽，跳过消息 ID={message.id}')
+                            context.blocked_media_message_ids.add(message.id)
                             blocked_media_count += 1
                             continue
 
@@ -88,6 +90,7 @@ class MediaFilter(BaseFilter):
                     logger.info(f'是否发送媒体大小超限提醒: {rule.is_send_over_media_size_message}')
 
                     if rule.max_media_size and (file_size > rule.max_media_size) and rule.enable_media_size_filter:
+                        context.blocked_media_message_ids.add(message.id)
                         file_name = ''
                         if hasattr(message.media, 'document') and message.media.document:
                             for attr in message.media.document.attributes:
@@ -100,6 +103,7 @@ class MediaFilter(BaseFilter):
 
                 if rule.media_caption_filter and not message.text:
                     logger.info(f'Caption过滤开启，消息无caption，跳过 ID={message.id}')
+                    context.blocked_media_message_ids.add(message.id)
                     blocked_media_count += 1
                     continue
 
@@ -112,6 +116,17 @@ class MediaFilter(BaseFilter):
             context.errors.append(f"收集媒体组消息错误: {str(e)}")
 
         logger.info(f'共找到 {len(context.media_group_messages)} 条媒体组消息，{len(context.skipped_media)} 条超限')
+
+        if context.media_group_messages:
+            primary_message = select_primary_media_group_message(
+                context.media_group_messages,
+                require_caption=rule.media_caption_filter,
+            ) or context.media_group_messages[0]
+            context.primary_message = primary_message
+            primary_text = primary_message.text or ''
+            context.message_text = primary_text
+            context.check_message_text = primary_text
+            context.buttons = primary_message.buttons if hasattr(primary_message, 'buttons') else None
 
         # 如果所有媒体都被屏蔽，设置不转发
         if total_media_count > 0 and total_media_count == blocked_media_count:
@@ -172,6 +187,7 @@ class MediaFilter(BaseFilter):
                     media_types = session.query(MediaTypes).filter_by(rule_id=rule.id).first()
                     if media_types and await self._is_media_type_blocked(event.message.media, media_types):
                         logger.info(f'媒体类型被屏蔽，跳过消息 ID={event.message.id}')
+                        context.blocked_media_message_ids.add(event.message.id)
                         # 检查是否允许文本通过
                         if rule.media_allow_text:
                             logger.info('媒体被屏蔽但允许文本通过')
@@ -184,6 +200,7 @@ class MediaFilter(BaseFilter):
             if rule.enable_extension_filter and event.message.media:
                 if not await self._is_media_extension_allowed(rule, event.message.media):
                     logger.info(f'媒体扩展名被屏蔽，跳过消息 ID={event.message.id}')
+                    context.blocked_media_message_ids.add(event.message.id)
                     # 检查是否允许文本通过
                     if rule.media_allow_text:
                         logger.info('媒体被屏蔽但允许文本通过')
@@ -194,6 +211,7 @@ class MediaFilter(BaseFilter):
 
             if rule.media_caption_filter and not event.message.text:
                 logger.info(f'Caption过滤开启，单条媒体消息无caption，跳过 ID={event.message.id}')
+                context.blocked_media_message_ids.add(event.message.id)
                 context.should_forward = False
                 return True
 
@@ -207,6 +225,7 @@ class MediaFilter(BaseFilter):
 
             logger.info(f'是否启用媒体大小过滤: {rule.enable_media_size_filter}')
             if rule.max_media_size and (file_size > rule.max_media_size) and rule.enable_media_size_filter:
+                context.blocked_media_message_ids.add(event.message.id)
                 file_name = ''
                 if event.message.document:
                     # 正确地从文档属性中获取文件名

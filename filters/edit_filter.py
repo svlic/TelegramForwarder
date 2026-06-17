@@ -39,8 +39,8 @@ class EditFilter(BaseFilter):
             logger.info("消息已被前置过滤器标记为不转发，跳过编辑")
             return False
 
-        if getattr(context, 'media_blocked', False) and not context.message_text:
-            logger.info("媒体被屏蔽且没有可保留的文本内容，跳过编辑")
+        if getattr(context, 'media_blocked', False):
+            logger.info("媒体已被前置过滤器屏蔽，编辑模式跳过源消息修改")
             return False
             
         # 检查是否为频道消息
@@ -94,6 +94,9 @@ class EditFilter(BaseFilter):
                 for message in context.media_group_messages:
                     try:
                         primary_id = context.primary_message.id if context.primary_message else event.message.id
+                        if message.id in getattr(context, 'blocked_media_message_ids', set()):
+                            logger.info(f"媒体组消息 {message.id} 已被媒体过滤器屏蔽，跳过编辑")
+                            continue
                         text_to_edit = message_text if message.id == primary_id else ""
                         logger.debug(f"尝试编辑媒体组消息 {message.id}, 媒体类型: {type(message.media).__name__ if message.media else '无媒体'}")
                         

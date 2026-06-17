@@ -23,6 +23,7 @@ class MessageContext:
         self.should_forward = True
         self.processing_failed = False
         self.media_blocked = False
+        self.blocked_media_message_ids = set()
         
         grouped_id = message.grouped_id if message and hasattr(message, 'grouped_id') else None
         self.is_media_group = grouped_id is not None
