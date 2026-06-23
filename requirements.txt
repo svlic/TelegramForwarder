@@ -7,7 +7,6 @@ pyaes==1.6.1
 SQLAlchemy==2.0.37
 
 # HTTP & Network
-websocket-client==1.8.0
 websockets==14.1
 
 # AI Providers
@@ -15,9 +14,6 @@ openai==1.63.2
 
 # Config & Utils
 python-dotenv==1.0.0
-pydantic==2.10.6
-pydantic_core==2.27.2
 
 # Other
 pytz==2025.1
-tqdm==4.67.1
