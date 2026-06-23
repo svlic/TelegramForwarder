@@ -1,6 +1,5 @@
 import logging
 import os
-import asyncio
 from utils.media import get_media_size
 from utils.constants import TEMP_DIR
 from utils.common import get_db_ops, collect_media_group_messages, select_primary_media_group_message

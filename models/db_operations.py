@@ -1,5 +1,4 @@
 from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
 from models.models import Keyword, ReplaceRule, ForwardRule, MediaTypes, MediaExtensions, RuleSync, get_db_session
 import logging
 import os

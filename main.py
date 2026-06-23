@@ -120,17 +120,6 @@ async def start_clients():
 
 async def register_bot_commands(bot):
     """注册机器人命令"""
-    # # 先清空现有命令
-    # try:
-    #     await bot(SetBotCommandsRequest(
-    #         scope=types.BotCommandScopeDefault(),
-    #         lang_code='',
-    #         commands=[]  # 空列表清空所有命令
-    #     ))
-    #     logger.info('已清空现有机器人命令')
-    # except Exception as e:
-    #     logger.error(f'清空机器人命令时出错: {str(e)}')
-
     commands = [
         # 基础命令
         BotCommand(
@@ -278,12 +267,6 @@ async def register_bot_commands(bot):
             command='delete_rule',
             description='删除转发规则'
         ),
-
-
-        # BotCommand(
-        #     command='clear_all',
-        #     description='慎用！清空所有数据'
-        # ),
     ]
 
     try:
