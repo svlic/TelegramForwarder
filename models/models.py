@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignK
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from enums.enums import ForwardMode, PreviewMode, MessageMode, AddMode, HandleMode
+from utils.constants import DEFAULT_MAX_MEDIA_SIZE, DEFAULT_SUMMARY_TIME
 import logging
 import os
 

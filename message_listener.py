@@ -22,13 +22,14 @@ BOT_ID = None
 
 
 async def handle_clear_all_confirmation(event, sender_id, state_chat_id):
-    await state_manager.clear_state(sender_id, state_chat_id)
     await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
 
     if (event.raw_text or '').strip() != CLEAR_ALL_CONFIRM_TEXT:
-        logger.info('clear_all 已取消，确认文本不匹配')
-        await reply_and_delete(event, '已取消 clear_all 操作')
+        logger.info('clear_all 确认文本不匹配，保留确认状态')
+        await reply_and_delete(event, '确认文本不匹配，clear_all 操作未执行，请重新输入确认文本')
         return True
+
+    await state_manager.clear_state(sender_id, state_chat_id)
 
     if not await is_admin(event):
         logger.warning('clear_all confirmation rejected for non-admin sender=%s chat=%s', sender_id, state_chat_id)
@@ -197,7 +198,3 @@ async def handle_bot_message(event, bot_client):
         logger.error(f'处理机器人命令时发生错误: {str(e)}')
         logger.exception(e)
 
-async def clear_group_cache(group_key, delay=300):
-    await asyncio.sleep(delay)
-    async with _PROCESSED_GROUPS_LOCK:
-        PROCESSED_GROUPS.pop(group_key, None)
