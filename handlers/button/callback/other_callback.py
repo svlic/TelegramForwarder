@@ -1160,7 +1160,7 @@ async def callback_set_original_link_template(event, rule_id, session, message, 
         template_attr="original_link_template",
         template_name="原始链接模板",
         help_text=help_text,
-        cancel_action="cancel_set_link",
+        cancel_action="cancel_set_original_link",
     )
     return
 
@@ -1217,5 +1217,17 @@ async def callback_toggle_reverse_whitelist(event, rule_id, session, message, da
         rule_id,
         field_name="enable_reverse_whitelist",
         log_label="反转白名单设置",
+    )
+    return
+
+
+async def callback_toggle_ufb(event, rule_id, session, message, data):
+    """切换 UFB 同步设置"""
+    await _toggle_other_setting(
+        event,
+        session,
+        rule_id,
+        field_name="is_ufb",
+        log_label="UFB同步设置",
     )
     return

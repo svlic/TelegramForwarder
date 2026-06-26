@@ -25,7 +25,7 @@ from handlers.button.callback.other_callback import (
     callback_set_time_template, callback_cancel_set_userinfo,
     callback_cancel_set_time, callback_set_original_link_template,
     callback_cancel_set_original_link, callback_toggle_reverse_blacklist,
-    callback_toggle_reverse_whitelist,
+    callback_toggle_reverse_whitelist, callback_toggle_ufb,
 )
 import logging
 import traceback
@@ -723,4 +723,5 @@ CALLBACK_HANDLERS = {
     'cancel_set_original_link': callback_cancel_set_original_link,
     'toggle_reverse_blacklist': callback_toggle_reverse_blacklist,
     'toggle_reverse_whitelist': callback_toggle_reverse_whitelist,
+    'toggle_ufb': callback_toggle_ufb,
 }

@@ -37,11 +37,11 @@ class EditFilter(BaseFilter):
 
         if not context.should_forward:
             logger.info("消息已被前置过滤器标记为不转发，跳过编辑")
-            return False
+            return True
 
         if getattr(context, 'media_blocked', False):
             logger.info("媒体已被前置过滤器屏蔽，编辑模式跳过源消息修改")
-            return False
+            return True
             
         # 检查是否为频道消息
         chat = await event.get_chat()
@@ -49,7 +49,7 @@ class EditFilter(BaseFilter):
         
         if not isinstance(chat, Channel):
             logger.info(f"不是频道消息 (聊天类型: {type(chat).__name__})，跳过编辑")
-            return False
+            return True
             
         try:
             # 获取用户客户端
@@ -59,7 +59,7 @@ class EditFilter(BaseFilter):
             
             if not user_client:
                 logger.error("无法获取用户客户端，无法执行编辑操作")
-                return False
+                return True
             
             logger.debug("成功获取用户客户端")
                 
@@ -81,7 +81,7 @@ class EditFilter(BaseFilter):
             # 检查文本是否有变化
             if message_text == event.message.text:
                 logger.info("消息文本没有变化，跳过编辑")
-                return False
+                return True
             
             # 处理媒体组消息
             if context.is_media_group:
@@ -89,7 +89,7 @@ class EditFilter(BaseFilter):
                 # 尝试编辑媒体组中的每条消息
                 if not context.media_group_messages:
                     logger.warning("媒体组消息列表为空，无法编辑")
-                    return False
+                    return True
                     
                 for message in context.media_group_messages:
                     try:
