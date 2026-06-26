@@ -1,3 +1,6 @@
+# OpenCode / agent local state
+.omo/
+
 # 环境变量文件
 .env
 
