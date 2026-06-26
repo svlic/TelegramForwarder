@@ -149,6 +149,53 @@ async def get_db_ops():
         main.db_ops = await main.init_db_ops()
     return main.db_ops
 
+
+def _chat_display_name(entity):
+    if hasattr(entity, 'title') and entity.title:
+        return entity.title
+    first = getattr(entity, 'first_name', None) or ''
+    last = getattr(entity, 'last_name', None) or ''
+    combined = f'{first} {last}'.strip()
+    return combined or '私聊'
+
+
+async def resolve_bind_chat_ref(client, ref: str):
+    """Resolve /bind argument to Telethon entity."""
+    ref = (ref or '').strip()
+    if not ref:
+        raise ValueError('聊天引用不能为空')
+
+    if ref.lstrip('-').isdigit():
+        return await client.get_entity(int(ref))
+
+    if ref.startswith('https://') or ref.startswith('http://'):
+        return await client.get_entity(ref)
+
+    if ref.startswith('t.me/'):
+        return await client.get_entity(f'https://{ref}')
+
+    return await client.get_entity(ref)
+
+
+def get_or_create_chat_row(session, entity) -> Chat:
+    """Persist Chat row using the same telegram_chat_id format as /bind and listeners."""
+    telegram_chat_id = get_telegram_chat_db_id(entity)
+    chat_row = session.query(Chat).filter(Chat.telegram_chat_id == telegram_chat_id).first()
+    if chat_row:
+        name = _chat_display_name(entity)
+        if name and chat_row.name != name:
+            chat_row.name = name
+        return chat_row
+
+    chat_row = Chat(
+        telegram_chat_id=telegram_chat_id,
+        name=_chat_display_name(entity),
+    )
+    session.add(chat_row)
+    session.flush()
+    return chat_row
+
+
 async def get_user_id():
     """获取用户ID，确保环境变量已加载"""
     user_id_str = os.getenv('USER_ID')
@@ -620,7 +667,8 @@ async def check_keyword_match(keyword, message_text):
                 logger.info("正则匹配成功")
                 return True
         except re.error:
-            logger.error("正则表达式错误")
+            logger.error("正则表达式错误: %s", keyword.keyword)
+            return bool(keyword.is_blacklist)
     else:
         if keyword.keyword.lower() in message_text.lower():
             logger.info("关键字匹配成功")

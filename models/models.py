@@ -257,6 +257,9 @@ def migrate_db(engine):
         'media_allow_text': 'ALTER TABLE forward_rules ADD COLUMN media_allow_text BOOLEAN DEFAULT FALSE',
         'media_caption_filter': 'ALTER TABLE forward_rules ADD COLUMN media_caption_filter BOOLEAN DEFAULT FALSE',
         'enable_ai_upload_image': 'ALTER TABLE forward_rules ADD COLUMN enable_ai_upload_image BOOLEAN DEFAULT FALSE',
+        'is_ufb': 'ALTER TABLE forward_rules ADD COLUMN is_ufb BOOLEAN DEFAULT FALSE',
+        'ufb_domain': 'ALTER TABLE forward_rules ADD COLUMN ufb_domain VARCHAR DEFAULT NULL',
+        'ufb_item': 'ALTER TABLE forward_rules ADD COLUMN ufb_item VARCHAR DEFAULT "main"',
     }
 
     keywords_new_columns = {
