@@ -125,7 +125,8 @@ class AIFilter(BaseFilter):
                 except asyncio.TimeoutError:
                     logger.error(f'AI处理超时 ({AI_PROCESS_TIMEOUT}秒)')
                     context.errors.append("AI处理超时")
-                    return True
+                    context.should_forward = False
+                    return False
 
 
                 # 如果需要在AI处理后再次检查关键字
@@ -140,7 +141,8 @@ class AIFilter(BaseFilter):
             except Exception as e:
                 logger.error(f'AI处理消息时出错: {str(e)}')
                 context.errors.append(f"AI处理错误: {str(e)}")
-                # 即使AI处理失败，仍然继续处理
+                context.should_forward = False
+                return False
         return True
 
 

@@ -25,6 +25,8 @@ class KeywordFilter(BaseFilter):
 
         
         should_forward = await check_keywords(rule, message_text, event)
-        
+        context.should_forward = should_forward
+        if not should_forward:
+            logger.info('关键字过滤未通过，不转发')
         return should_forward
     

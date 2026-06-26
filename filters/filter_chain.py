@@ -42,5 +42,8 @@ class FilterChain:
                 context.should_forward = False
                 return False
         
-        logger.info("过滤器链处理完成")
-        return True 
+        if context.should_forward:
+            logger.info("过滤器链处理完成，将转发消息")
+        else:
+            logger.info("过滤器链处理完成，消息不满足转发条件")
+        return context.should_forward
