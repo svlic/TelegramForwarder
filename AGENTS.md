@@ -30,7 +30,7 @@ TelegramForwarder v1.7.2 - Telegram消息转发机器人，支持关键词过滤
 | 命令处理 | `handlers/command_handlers.py` | 所有/command |
 | 按钮回调 | `handlers/button/` | 菜单交互 |
 | AI调用 | `ai/` | Provider模式 |
-| 转发处理 | `handlers/user_handler.py` | 用户模式转发 |
+| 转发处理 | `message_listener.py` + `filters/process.py` | 监听与过滤器链 |
 
 ## CODE MAP
 | Symbol | Type | Location | Role |

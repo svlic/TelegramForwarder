@@ -8,7 +8,7 @@
 handlers/
 ├── bot_handler.py       # 命令分发入口
 ├── command_handlers.py  # 所有 /command 处理函数
-├── user_handler.py      # 用户模式转发处理
+├── (转发在 message_listener + filters/process.py)
 ├── list_handlers.py     # 列表显示处理
 ├── link_handlers.py     # 链接转发功能
 ├── prompt_handlers.py   # 提示词设置处理
@@ -24,7 +24,7 @@ handlers/
 | 添加新命令 | `bot_handler.py` | command_handlers字典 |
 | 命令实现 | `command_handlers.py` | handle_*_command函数 |
 | 按钮回调 | `button/callback/` | callback_handlers.py |
-| 用户模式转发 | `user_handler.py` | process_forward_rule |
+| 消息监听与转发 | `message_listener.py` | 调用 `filters/process.py` |
 
 ## CONVENTIONS
 - 命令处理函数: `handle_*_command(event, ...)`
