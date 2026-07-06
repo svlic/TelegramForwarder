@@ -157,7 +157,6 @@ class SummaryScheduler:
                 logger.info(f'规则 {rule_id} 获取消息时间范围: {start_time} 到 {end_time}')
 
                 async with self.request_semaphore:
-                    messages = []
                     offset_id = 0
 
                     while True:

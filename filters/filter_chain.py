@@ -17,8 +17,7 @@ class FilterChain:
         if not isinstance(filter_obj, BaseFilter):
             raise TypeError("过滤器必须是BaseFilter的子类")
         self.filters.append(filter_obj)
-        return self
-        
+
     async def process(self, client, event, chat_id, rule):
         context = MessageContext(client, event, chat_id, rule)
         
