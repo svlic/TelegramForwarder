@@ -4,8 +4,7 @@ from utils.media import get_media_size
 from utils.constants import TEMP_DIR
 from utils.common import get_db_ops, collect_media_group_messages, select_primary_media_group_message
 from filters.base_filter import BaseFilter
-from models.models import MediaTypes
-from models.models import get_db_session
+from models.models import MediaTypes, get_db_session
 from enums.enums import AddMode
 logger = logging.getLogger(__name__)
 
@@ -300,8 +299,13 @@ class MediaFilter(BaseFilter):
         if not rule.enable_extension_filter:
             return True
 
+        is_whitelist = rule.extension_filter_mode == AddMode.WHITELIST
+
         if not getattr(media, 'document', None):
-            logger.info("媒体没有document属性，跳过扩展名检查")
+            if is_whitelist:
+                logger.info("白名单模式：媒体没有 document，无法匹配扩展名，拒绝")
+                return False
+            logger.info("黑名单模式：媒体没有 document，跳过扩展名检查")
             return True
 
         file_name = None
@@ -311,10 +315,12 @@ class MediaFilter(BaseFilter):
                 file_name = attr.file_name
                 break
 
-
         if not file_name:
-            logger.info("无法获取文件名，无法判断扩展名")
-            return True
+            if is_whitelist:
+                logger.info("白名单模式：无法获取文件名，按「无扩展名」校验")
+            else:
+                logger.info("黑名单模式：无法获取文件名，跳过扩展名检查")
+                return True
 
         # 提取扩展名
         _, extension = os.path.splitext(file_name)
