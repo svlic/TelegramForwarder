@@ -2,9 +2,7 @@ import importlib
 import os
 import sys
 import logging
-from telethon.tl.types import ChannelParticipantsAdmins
 from telethon.tl import types
-from enums.enums import ForwardMode
 from models.models import Chat, ForwardRule
 from typing import Iterable
 import re
@@ -439,28 +437,17 @@ async def get_ai_settings_text(rule):
     )
 
 async def get_sender_info(event, rule_id):
-    """
-    获取发送者信息
-
-    Args:
-        event: 消息事件
-        rule_id: 规则ID
-
-    Returns:
-        str: 发送者信息
-    """
+    """Resolve display name for keyword matching when is_filter_user_info is enabled."""
     try:
         logger.info("开始获取发送者信息")
         sender_name = None
 
         if hasattr(event.message, 'sender_chat') and event.message.sender_chat:
-            # 用户以频道身份发送消息
             sender = event.message.sender_chat
             sender_name = sender.title if hasattr(sender, 'title') else None
             logger.info(f"使用频道信息: {sender_name}")
 
         elif event.sender:
-            # 用户以个人身份发送消息
             sender = event.sender
             sender_name = (
                 sender.title if hasattr(sender, 'title')
@@ -469,11 +456,9 @@ async def get_sender_info(event, rule_id):
             logger.info(f"使用发送者信息: {sender_name}")
 
         elif hasattr(event.message, 'peer_id') and event.message.peer_id:
-            # 尝试从 peer_id 获取信息
             peer = event.message.peer_id
             if hasattr(peer, 'channel_id'):
                 try:
-                    # 尝试获取频道信息
                     channel = await event.client.get_entity(peer)
                     sender_name = channel.title if hasattr(channel, 'title') else None
                     logger.info(f"使用peer_id信息: {sender_name}")
@@ -482,9 +467,8 @@ async def get_sender_info(event, rule_id):
 
         if sender_name:
             return sender_name
-        else:
-            logger.warning(f"规则 ID: {rule_id} - 无法获取发送者信息")
-            return None
+        logger.warning(f"规则 ID: {rule_id} - 无法获取发送者信息")
+        return None
 
     except Exception as e:
         logger.error(f'获取发送者信息出错: {str(e)}')
@@ -676,7 +660,7 @@ async def check_keyword_match(keyword, message_text):
     return False
 
 async def process_user_info(event, rule_id, message_text):
-    """处理用户信息过滤"""
+    """Prefix message text with sender info for keyword matching."""
     username = await get_sender_info(event, rule_id)
     name = None
 
@@ -693,15 +677,14 @@ async def process_user_info(event, rule_id, message_text):
     if username and name:
         logger.info(f"成功获取用户信息: {username} {name}")
         return f"{username} {name}:\n{message_text}"
-    elif username:
+    if username:
         logger.info(f"成功获取用户信息: {username}")
         return f"{username}:\n{message_text}"
-    elif name:
+    if name:
         logger.info(f"成功获取用户信息: {name}")
         return f"{name}:\n{message_text}"
-    else:
-        logger.warning(f"规则 ID: {rule_id} - 无法获取发送者信息")
-        return message_text
+    logger.warning(f"规则 ID: {rule_id} - 无法获取发送者信息")
+    return message_text
 
 
 async def process_whitelist_then_blacklist_mode(whitelist_keywords, blacklist_keywords, message_text):

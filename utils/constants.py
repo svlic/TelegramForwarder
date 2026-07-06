@@ -14,6 +14,17 @@ AI_MODELS = [m.strip() for m in os.getenv('AI_MODELS', '').split(',') if m.strip
 DEFAULT_AI_PROMPT = '请尊重原意，保持原有格式不变，用简体中文重写下面的内容：'
 DEFAULT_SUMMARY_PROMPT = '请总结以下频道/群组24小时内的消息。'
 
+AI_SETTINGS_TEXT = """当前 AI 提示词：
+
+`{ai_prompt}`
+
+当前总结提示词：
+
+`{summary_prompt}`
+"""
+
+MEDIA_SETTINGS_TEXT = """媒体设置见下方按钮。"""
+
 # 自定义 OpenAI 兼容接口
 CUSTOM_AI_API_KEY = os.getenv('CUSTOM_AI_API_KEY', '')
 CUSTOM_AI_API_BASE = os.getenv('CUSTOM_AI_API_BASE', '')
