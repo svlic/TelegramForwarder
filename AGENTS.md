@@ -114,3 +114,6 @@ docker-compose run -it telegram-forwarder
 - 读写`StateManager`时统一使用`utils.common.get_state_identity(event)`，避免频道场景 callback 与 listener 的 `(user_id, chat_id)` key 不一致
 - Docker日志轮转不要通过`DOCKER_LOG_MAX_SIZE` / `DOCKER_LOG_MAX_FILE`环境变量配置；应使用 Docker logging options
 - UFB配置更新回调已移除；如需恢复，必须同时添加实际注册者和测试
+- UFB不作为独立包发布；依赖以根`requirements.txt`为准，不再维护`ufb/requirements.txt`
+- `requirements.txt`中`pyaes`是Telethon必需依赖的显式pin，`cryptg`是Telethon加密加速依赖；不要作为未使用依赖直接删除
+- `ai/__init__.py`包根只承诺导出`get_ai_provider`，不要依赖`from ai import BaseAIProvider`

@@ -14,9 +14,6 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 创建临时文件目录
-RUN mkdir -p /app/temp
-
 # 复制应用代码
 COPY . .
 

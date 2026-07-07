@@ -29,7 +29,7 @@ ufb/.idea
 ufb/config/*
 
 # 忽略无用的图片和测试目录
-**/test/
+**/tests/
 **/images/
 
 # 忽略日志文件
