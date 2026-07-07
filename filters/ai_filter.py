@@ -257,7 +257,7 @@ async def _ai_handle(message: str, rule, image_files=None) -> str:
                             })
                             # 记录图片大小而不是内容
                             logger.info(f"已读取图片，类型: {mime_type}，大小: {len(img_bytes) // 1024} KB")
-                    except Exception as e:
+                    except Exception:
                         logger.error("读取图片文件时出错")
 
         logger.info(f"共有 {len(img_data)} 张图片将上传到AI")

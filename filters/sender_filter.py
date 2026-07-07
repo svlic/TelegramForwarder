@@ -25,18 +25,23 @@ class SenderFilter(BaseFilter):
         """
         rule = context.rule
         client = context.client
-        event = context.event
 
         if not context.should_forward:
             logger.info('消息不满足转发条件，跳过发送')
             return False
 
-        # 获取目标聊天信息
+        # 获取目标聊天信息（DB 中私聊为正数 ID，勿对非频道 ID 做 normalize_channel_id）
         target_chat = rule.target_chat
-        target_chat_id = int(target_chat.telegram_chat_id)
-
-        # Normalize channel ID to standard format
-        target_chat_id = normalize_channel_id(target_chat_id)
+        raw_id = int(target_chat.telegram_chat_id)
+        id_str = str(target_chat.telegram_chat_id)
+        if id_str.startswith('-100'):
+            target_chat_id = raw_id
+        elif id_str.startswith('100'):
+            target_chat_id = normalize_channel_id(raw_id)
+        elif raw_id < 0:
+            target_chat_id = raw_id
+        else:
+            target_chat_id = raw_id
 
         # 预先获取目标聊天实体
         try:
@@ -52,15 +57,15 @@ class SenderFilter(BaseFilter):
         try:
             # 处理媒体组消息
             if context.is_media_group or (context.media_group_messages and context.skipped_media):
-                logger.info(f'准备发送媒体组消息')
+                logger.info('准备发送媒体组消息')
                 await self._send_media_group(context, target_chat_id, parse_mode)
             # 处理单条媒体消息
             elif context.media_files or context.skipped_media:
-                logger.info(f'准备发送单条媒体消息')
+                logger.info('准备发送单条媒体消息')
                 await self._send_single_media(context, target_chat_id, parse_mode)
             # 处理纯文本消息
             else:
-                logger.info(f'准备发送纯文本消息')
+                logger.info('准备发送纯文本消息')
                 await self._send_text_message(context, target_chat_id, parse_mode)
 
             logger.info(f'消息已发送到: {target_chat.name} ({target_chat_id})')
@@ -215,7 +220,7 @@ class SenderFilter(BaseFilter):
         client = context.client
         event = context.event
 
-        logger.info(f'发送单条媒体消息')
+        logger.info('发送单条媒体消息')
 
         # 检查是否所有媒体都超限
         if context.skipped_media and not context.media_files:
@@ -240,7 +245,7 @@ class SenderFilter(BaseFilter):
                 buttons=context.buttons
             )
             context.forwarded_messages = [sent_message]
-            logger.info(f'媒体文件超过大小限制，仅转发文本')
+            logger.info('媒体文件超过大小限制，仅转发文本')
             return
 
         # 确保context.media_files存在
@@ -270,7 +275,7 @@ class SenderFilter(BaseFilter):
                     }[rule.is_preview]
                 )
                 context.forwarded_messages = [sent_message]
-                logger.info(f'媒体消息已发送')
+                logger.info('媒体消息已发送')
             except Exception as e:
                 logger.error(f'发送媒体消息时出错: {str(e)}')
                 raise

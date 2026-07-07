@@ -318,20 +318,21 @@ class MediaFilter(BaseFilter):
         if not file_name:
             if is_whitelist:
                 logger.info("白名单模式：无法获取文件名，按「无扩展名」校验")
+                extension = "无扩展名"
             else:
                 logger.info("黑名单模式：无法获取文件名，跳过扩展名检查")
                 return True
-
-        # 提取扩展名
-        _, extension = os.path.splitext(file_name)
-        extension = extension.lstrip('.').lower()  # 移除点号并转为小写
-
-        # 特殊处理：如果文件没有扩展名，将extension设为特殊值"无扩展名"
-        if not extension:
-            logger.info(f"文件 {file_name} 没有扩展名")
-            extension = "无扩展名"
         else:
-            logger.info(f"文件 {file_name} 的扩展名: {extension}")
+            # 提取扩展名
+            _, extension = os.path.splitext(file_name)
+            extension = extension.lstrip('.').lower()  # 移除点号并转为小写
+
+            # 特殊处理：如果文件没有扩展名，将extension设为特殊值"无扩展名"
+            if not extension:
+                logger.info(f"文件 {file_name} 没有扩展名")
+                extension = "无扩展名"
+            else:
+                logger.info(f"文件 {file_name} 的扩展名: {extension}")
 
         # 获取规则中保存的扩展名列表
         db_ops = await get_db_ops()

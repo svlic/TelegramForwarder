@@ -36,12 +36,12 @@ class EditFilter(BaseFilter):
             return True
 
         if not context.should_forward:
-            logger.info("消息已被前置过滤器标记为不转发，跳过编辑")
-            return True
+            logger.info("消息已被前置过滤器标记为不转发，编辑模式终止链路")
+            return False
 
         if getattr(context, 'media_blocked', False):
-            logger.info("媒体已被前置过滤器屏蔽，编辑模式跳过源消息修改")
-            return True
+            logger.info("媒体已被前置过滤器屏蔽，编辑模式不修改源消息且不再转发")
+            return False
             
         # 检查是否为频道消息
         chat = await event.get_chat()
