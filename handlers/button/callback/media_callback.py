@@ -153,7 +153,7 @@ async def callback_toggle_media_type(event, rule_id, session, message, data):
 
             success, _, current_media_types = await db_ops.get_media_types(session, rule.id)
             if not success:
-                logger.warning(f"获取媒体类型设置失败，无法同步")
+                logger.warning("获取媒体类型设置失败，无法同步")
             else:
                 sync_rules = session.query(RuleSync).filter(RuleSync.rule_id == rule.id).all()
 

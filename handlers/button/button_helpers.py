@@ -14,6 +14,19 @@ SUMMARY_TIMES = load_summary_times()
 DELAY_TIMES = load_delay_times()
 MEDIA_SIZE = load_max_media_size()
 MEDIA_EXTENSIONS = load_media_extensions()
+
+
+def create_page_buttons(page, total_pages, callback_for_page):
+    if total_pages <= 1:
+        return []
+
+    return [
+        Button.inline("⬅️", callback_for_page(page - 1) if page > 0 else "noop"),
+        Button.inline(f"{page + 1}/{total_pages}", "noop"),
+        Button.inline("➡️", callback_for_page(page + 1) if page < total_pages - 1 else "noop"),
+    ]
+
+
 async def create_ai_settings_buttons(rule=None,rule_id=None):
     """创建 AI 设置按钮"""
     buttons = []
@@ -63,7 +76,7 @@ async def create_media_settings_buttons(rule=None,rule_id=None):
     for field, config in MEDIA_SETTINGS.items():
         # 特殊处理selected_media_types字段，因为它已经移动到单独的表中
         if field == 'selected_media_types':
-            display_value = f"{config['display_name']}"
+            display_value = config['display_name']
             callback_data = f"{config['toggle_action']}:{rule.id}"
             buttons.append([Button.inline(display_value, callback_data)])
             continue
@@ -73,7 +86,7 @@ async def create_media_settings_buttons(rule=None,rule_id=None):
             buttons.append([Button.inline(display_value, callback_data)])
             continue
         elif field == 'media_extensions':
-            display_value = f"{config['display_name']}"
+            display_value = config['display_name']
             callback_data = f"{config['toggle_action']}:{rule.id}"
             buttons.append([Button.inline(display_value, callback_data)])
             continue
@@ -124,7 +137,7 @@ async def create_other_settings_buttons(rule=None,rule_id=None):
                 current_row = []
         else:
             # 其他按钮单独一行
-            display_value = f"{config['display_name']}"
+            display_value = config['display_name']
             callback_data = f"{config['toggle_action']}:{rule_id}"
             buttons.append([Button.inline(display_value, callback_data)])
 
@@ -429,24 +442,12 @@ async def create_media_extensions_buttons(rule_id, page=0):
             buttons.append(current_row)
 
         # 添加分页按钮
-        page_buttons = []
         total_pages = (total_extensions + extensions_per_page - 1) // extensions_per_page
-
-        if total_pages > 1:
-            # 上一页按钮
-            if page > 0:
-                page_buttons.append(Button.inline("⬅️", f"media_extensions_page:{rule_id}:{page-1}"))
-            else:
-                page_buttons.append(Button.inline("⬅️", f"noop"))
-
-            # 页码指示
-            page_buttons.append(Button.inline(f"{page+1}/{total_pages}", f"noop"))
-
-            # 下一页按钮
-            if page < total_pages - 1:
-                page_buttons.append(Button.inline("➡️", f"media_extensions_page:{rule_id}:{page+1}"))
-            else:
-                page_buttons.append(Button.inline("➡️", f"noop"))
+        page_buttons = create_page_buttons(
+            page,
+            total_pages,
+            lambda target_page: f"media_extensions_page:{rule_id}:{target_page}",
+        )
 
         if page_buttons:
             buttons.append(page_buttons)
@@ -526,23 +527,11 @@ async def create_sync_rule_buttons(rule_id, page=0):
             buttons.append([Button.inline(button_text, callback_data)])
 
         # 添加分页按钮
-        page_buttons = []
-
-        if total_pages > 1:
-            # 上一页按钮
-            if page > 0:
-                page_buttons.append(Button.inline("⬅️", f"sync_rule_page:{rule_id}:{page-1}"))
-            else:
-                page_buttons.append(Button.inline("⬅️", "noop"))
-
-            # 页码指示
-            page_buttons.append(Button.inline(f"{page+1}/{total_pages}", "noop"))
-
-            # 下一页按钮
-            if page < total_pages - 1:
-                page_buttons.append(Button.inline("➡️", f"sync_rule_page:{rule_id}:{page+1}"))
-            else:
-                page_buttons.append(Button.inline("➡️", "noop"))
+        page_buttons = create_page_buttons(
+            page,
+            total_pages,
+            lambda target_page: f"sync_rule_page:{rule_id}:{target_page}",
+        )
 
         if page_buttons:
             buttons.append(page_buttons)

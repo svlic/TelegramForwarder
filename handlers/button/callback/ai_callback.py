@@ -209,9 +209,6 @@ async def callback_select_model(event, rule_id, session, message, data):
         _, rule_id_part, model = parts
         rule = session.get(ForwardRule, int(rule_id_part))
         if rule:
-            # 记录旧模型
-            old_model = rule.ai_model
-            
             # 更新模型
             rule.ai_model = model
             session.commit()
