@@ -1,4 +1,3 @@
-from .base import BaseAIProvider
 from .openai_base_provider import CustomOpenAIProvider
 
 

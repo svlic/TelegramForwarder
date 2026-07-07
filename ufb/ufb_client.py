@@ -219,7 +219,7 @@ class UFBClient:
             async for message in self.websocket:
                 try:
                     data = json.loads(message)
-                    logger.info(f"收到服务器消息")
+                    logger.info("收到服务器消息")
 
                     msg_type = data.get("type")
                     if msg_type == "firstSync":
