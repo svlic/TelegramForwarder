@@ -1,10 +1,9 @@
 import logging
 from models.models import get_db_session, ForwardRule, RuleSync
 from managers.state_manager import state_manager
-from utils.common import get_ai_settings_text
-from handlers import bot_handler
+from utils.common import get_ai_settings_text, get_bot_client
+from handlers.button.button_helpers import create_ai_settings_buttons, create_other_settings_buttons
 from utils.auto_delete import async_delete_user_message
-from utils.common import get_bot_client
 logger = logging.getLogger(__name__)
 
 async def handle_prompt_setting(event, client, sender_id, chat_id, current_state, message):
@@ -132,14 +131,14 @@ async def handle_prompt_setting(event, client, sender_id, chat_id, current_state
                 await client.send_message(
                     chat_id,
                     await get_ai_settings_text(rule),
-                    buttons=await bot_handler.create_ai_settings_buttons(rule)
+                    buttons=await create_ai_settings_buttons(rule)
                 )
             elif template_type in ["userinfo", "time", "link"]:
                 # 其他设置页面
                 await client.send_message(
                     chat_id,
                     f"已更新规则 {rule_id} 的{prompt_type}模板",
-                    buttons=await bot_handler.create_other_settings_buttons(rule_id=rule_id)
+                    buttons=await create_other_settings_buttons(rule_id=rule_id)
                 )
             
             # 删除用户消息

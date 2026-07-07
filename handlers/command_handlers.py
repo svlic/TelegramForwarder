@@ -10,9 +10,10 @@ from enums.enums import AddMode
 from models.models import Chat, ForwardRule, Keyword, ReplaceRule, RuleSync, MediaTypes, MediaExtensions, get_db_session
 from utils.constants import TEMP_DIR
 from utils.common import (
+    check_and_clean_chats,
+    get_all_rules,
     get_current_rule,
     get_db_ops,
-    get_bot_client,
     rule_belongs_to_current_chat,
     get_telegram_chat_db_id,
     get_state_identity,

@@ -1,15 +1,14 @@
 import traceback
-import asyncio
 from telethon.tl import types
 
-from handlers.button.button_helpers import create_other_settings_buttons
+from handlers.button.button_helpers import create_other_settings_buttons, create_page_buttons
 from models.models import ForwardRule, MediaTypes, MediaExtensions, RuleSync, Keyword, ReplaceRule
 import logging
 from models.models import get_db_session
 from telethon import Button
 from sqlalchemy import inspect
 from utils.constants import RULES_PER_PAGE
-from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_state_identity
+from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_state_identity, get_current_rule
 from utils.auto_delete import send_message_and_delete
 from managers.state_manager import state_manager
 
@@ -107,23 +106,11 @@ async def create_copy_rule_buttons(event, rule_id, page=0):
             buttons.append([Button.inline(button_text, callback_data)])
 
         # 添加分页按钮
-        page_buttons = []
-
-        if total_pages > 1:
-            # 上一页按钮
-            if page > 0:
-                page_buttons.append(Button.inline("⬅️", f"copy_rule:{source_rule_id}:{page-1}"))
-            else:
-                page_buttons.append(Button.inline("⬅️", f"noop"))
-
-            # 页码指示
-            page_buttons.append(Button.inline(f"{page+1}/{total_pages}", f"noop"))
-
-            # 下一页按钮
-            if page < total_pages - 1:
-                page_buttons.append(Button.inline("➡️", f"copy_rule:{source_rule_id}:{page+1}"))
-            else:
-                page_buttons.append(Button.inline("➡️", f"noop"))
+        page_buttons = create_page_buttons(
+            page,
+            total_pages,
+            lambda target_page: f"copy_rule:{source_rule_id}:{target_page}",
+        )
 
         if page_buttons:
             buttons.append(page_buttons)
@@ -298,6 +285,7 @@ async def callback_perform_copy_rule(event, rule_id_data, session, message, data
         # 保存目标规则的原始关联
         original_source_chat_id = target_rule.source_chat_id
         original_target_chat_id = target_rule.target_chat_id
+        had_existing_sync = target_rule.enable_sync
 
         # 获取ForwardRule模型的所有字段
         inspector = inspect(ForwardRule)
@@ -626,24 +614,12 @@ async def create_rule_selection_buttons(event, rule_id, page=0, callback_action=
             buttons.append([Button.inline(button_text, callback_data)])
 
         # 添加分页按钮
-        page_buttons = []
         action_name = callback_action.replace("perform_", "")
-
-        if total_pages > 1:
-            # 上一页按钮
-            if page > 0:
-                page_buttons.append(Button.inline("⬅️", f"{action_name}:{source_rule_id}:{page-1}"))
-            else:
-                page_buttons.append(Button.inline("⬅️", f"noop"))
-
-            # 页码指示
-            page_buttons.append(Button.inline(f"{page+1}/{total_pages}", f"noop"))
-
-            # 下一页按钮
-            if page < total_pages - 1:
-                page_buttons.append(Button.inline("➡️", f"{action_name}:{source_rule_id}:{page+1}"))
-            else:
-                page_buttons.append(Button.inline("➡️", f"noop"))
+        page_buttons = create_page_buttons(
+            page,
+            total_pages,
+            lambda target_page: f"{action_name}:{source_rule_id}:{target_page}",
+        )
 
         if page_buttons:
             buttons.append(page_buttons)
@@ -945,7 +921,6 @@ async def callback_perform_delete_rule(event, rule_id_data, session, message, da
             # 尝试使用parse_rule_ids函数解析
             parts = rule_id_data.split(':')
             if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
-                source_rule_id = int(parts[0])
                 target_rule_id = int(parts[1])
                 # 使用目标规则ID
                 rule_id = target_rule_id
@@ -1222,3 +1197,35 @@ async def callback_toggle_ufb(event, rule_id, session, message, data):
         log_label="UFB同步设置",
     )
     return
+
+
+UFB_ITEM_VALUES = frozenset({"main", "content", "main_username", "content_username"})
+
+
+async def callback_ufb_item(event, rule_id, session, message, data):
+    """Set UFB sync item type from /ufb_item_change inline buttons (ufb_item:<type>)."""
+    item = (rule_id or "").strip()
+    if item not in UFB_ITEM_VALUES:
+        await event.answer("无效的 UFB 配置类型")
+        return
+
+    rule_info = await get_current_rule(session, event)
+    if not rule_info:
+        await event.answer("请先使用 /switch 选择源聊天")
+        return
+
+    rule, _source_chat = rule_info
+    rule.ufb_item = item
+    session.commit()
+
+    labels = {
+        "main": "主页关键字",
+        "content": "内容页关键字",
+        "main_username": "主页用户名",
+        "content_username": "内容页用户名",
+    }
+    await event.answer(f"已切换为: {labels.get(item, item)}")
+    try:
+        await message.delete()
+    except Exception as e:
+        logger.warning(f"删除 ufb_item 选择消息后失败: {e}")

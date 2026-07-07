@@ -25,12 +25,12 @@ from handlers.button.callback.other_callback import (
     callback_set_time_template, callback_cancel_set_userinfo,
     callback_cancel_set_time, callback_set_original_link_template,
     callback_cancel_set_original_link, callback_toggle_reverse_blacklist,
-    callback_toggle_reverse_whitelist, callback_toggle_ufb,
+    callback_toggle_reverse_whitelist, callback_toggle_ufb, callback_ufb_item,
 )
 import logging
 import traceback
 from utils.auto_delete import respond_and_delete
-from utils.common import check_and_clean_chats, get_ai_settings_text, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_telegram_chat_db_id
+from utils.common import get_ai_settings_text, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_telegram_chat_db_id, get_db_ops
 
 
 RULE_CALLBACK_ACTIONS = {
@@ -127,50 +127,6 @@ async def callback_settings(event, rule_id, session, message, data):
         buttons.append([Button.inline(button_text, callback_data)])
 
     await message.edit('请选择要管理的转发规则:', buttons=buttons)
-
-async def callback_delete(event, rule_id, session, message, data):
-    """处理删除规则的回调"""
-    rule = session.get(ForwardRule, rule_id)
-    if not rule:
-        await event.answer('规则不存在')
-        return
-
-    try:
-        # 先保存规则对象，用于后续检查聊天关联
-        rule_obj = rule
-        
-        # 先删除替换规则
-        session.query(ReplaceRule).filter(
-            ReplaceRule.rule_id == rule.id
-        ).delete()
-
-        # 再删除关键字
-        session.query(Keyword).filter(
-            Keyword.rule_id == rule.id
-        ).delete()
-
-        # 删除规则
-        session.delete(rule)
-        
-        # 提交规则删除的更改
-        session.commit()
-        
-        # 使用通用方法检查并清理不再使用的聊天记录
-        deleted_chats = await check_and_clean_chats(session, rule_obj)
-        if deleted_chats > 0:
-            logger.info(f"删除规则后清理了 {deleted_chats} 个未使用的聊天记录")
-
-        # 删除机器人的消息
-        await message.delete()
-        # 发送新的通知消息
-        await respond_and_delete(event,('✅ 已删除规则'))
-        await event.answer('已删除规则')
-
-    except Exception as e:
-        session.rollback()
-        logger.error(f'删除规则时出错: {str(e)}')
-        logger.exception(e)
-        await event.answer('删除规则失败，请检查日志')
 
 async def callback_page(event, rule_id, session, message, data):
     """处理翻页的回调"""
@@ -664,7 +620,6 @@ CALLBACK_HANDLERS = {
     'toggle_current': callback_toggle_current,
     'switch': callback_switch,
     'settings': callback_settings,
-    'delete': callback_delete,
     'page': callback_page,
     'rule_settings': callback_rule_settings,
     'set_summary_time': callback_set_summary_time,
@@ -724,4 +679,5 @@ CALLBACK_HANDLERS = {
     'toggle_reverse_blacklist': callback_toggle_reverse_blacklist,
     'toggle_reverse_whitelist': callback_toggle_reverse_whitelist,
     'toggle_ufb': callback_toggle_ufb,
+    'ufb_item': callback_ufb_item,
 }
