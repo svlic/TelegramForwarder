@@ -3,6 +3,8 @@ import os
 import sys
 import logging
 from telethon.tl import types
+from telethon.tl.types import ChannelParticipantsAdmins
+from enums.enums import ForwardMode
 from models.models import Chat, ForwardRule
 from typing import Iterable
 import re
@@ -410,7 +412,7 @@ async def is_admin(event):
             bot_admins = get_admin_list()
             # 检查是否是机器人管理员
             if user_id not in bot_admins:
-                logger.info(f'非管理员的消息，已忽略')
+                logger.info('非管理员的消息，已忽略')
                 return False
             return True
     except Exception as e:
@@ -449,9 +451,8 @@ async def get_sender_info(event, rule_id):
 
         elif event.sender:
             sender = event.sender
-            sender_name = (
-                sender.title if hasattr(sender, 'title')
-                else f"{sender.first_name or ''} {sender.last_name or ''}".strip()
+            sender_name = getattr(sender, 'title', None) or (
+                f"{getattr(sender, 'first_name', '') or ''} {getattr(sender, 'last_name', '') or ''}".strip()
             )
             logger.info(f"使用发送者信息: {sender_name}")
 
@@ -669,9 +670,8 @@ async def process_user_info(event, rule_id, message_text):
         name = sender.title if hasattr(sender, 'title') else None
     elif event.sender:
         sender = event.sender
-        name = (
-            sender.title if hasattr(sender, 'title')
-            else f"{sender.first_name or ''} {sender.last_name or ''}".strip()
+        name = getattr(sender, 'title', None) or (
+            f"{getattr(sender, 'first_name', '') or ''} {getattr(sender, 'last_name', '') or ''}".strip()
         )
 
     if username and name:

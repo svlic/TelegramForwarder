@@ -130,7 +130,7 @@ class DBOperations:
                         elif item == 'content_username':
                             user_config['contentPageUserKeywords'] = keywords_config
                         else:
-                            logger.error(f"未设置UFB_ITEM环境变量")
+                            logger.error("未设置UFB_ITEM环境变量")
                             return
                         break
 
@@ -161,7 +161,7 @@ class DBOperations:
         Args:
             config: 收到的配置数据
         """
-        logger.info(f"从JSON同步关键字到数据库")
+        logger.info("从JSON同步关键字到数据库")
         with get_db_session() as session:
             # 获取所有启用了UFB的规则
             ufb_rules = session.query(ForwardRule).filter(
@@ -729,7 +729,7 @@ class DBOperations:
             ).first()
 
             if existing_sync:
-                return False, f"同步关系已存在"
+                return False, "同步关系已存在"
 
             # 创建新的同步关系
             new_sync = RuleSync(
@@ -744,7 +744,7 @@ class DBOperations:
             session.commit()
 
             logger.info(f"已添加规则同步: 从规则 {rule_id} 到规则 {sync_rule_id}")
-            return True, f"成功添加同步关系"
+            return True, "成功添加同步关系"
 
         except Exception as e:
             session.rollback()
