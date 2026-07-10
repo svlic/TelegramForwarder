@@ -34,6 +34,9 @@ CLEAR_ALL_CONFIRM_TEXT = 'CONFIRM CLEAR ALL'
 
 
 async def perform_clear_all(session):
+    session.query(MediaTypes).delete(synchronize_session=False)
+    session.query(MediaExtensions).delete(synchronize_session=False)
+    session.query(RuleSync).delete(synchronize_session=False)
     replace_count = session.query(ReplaceRule).delete(synchronize_session=False)
     keyword_count = session.query(Keyword).delete(synchronize_session=False)
     rule_count = session.query(ForwardRule).delete(synchronize_session=False)
