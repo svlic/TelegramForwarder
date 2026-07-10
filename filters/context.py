@@ -1,3 +1,9 @@
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+
 class MessageContext:
     
     def __init__(self, client, event, chat_id, rule):
@@ -36,3 +42,15 @@ class MessageContext:
         self.errors = []
         self.forwarded_messages = []
         self.comment_link = None
+
+    def cleanup_media_files(self):
+        for file_path in list(self.media_files):
+            if not file_path:
+                continue
+            try:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                    logger.info('清理临时媒体文件: %s', file_path)
+            except Exception as e:
+                logger.error('清理临时媒体文件失败 %s: %s', file_path, e)
+        self.media_files.clear()
