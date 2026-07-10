@@ -252,10 +252,10 @@ class DBOperations:
 
         # 处理单个规则的关键字添加
         for keyword in keywords:
-            # 检查是否存在相同的关键字（考虑黑白名单）
             existing_keyword = session.query(Keyword).filter(
                 Keyword.rule_id == rule_id,
                 Keyword.keyword == keyword,
+                Keyword.is_regex == is_regex,
                 Keyword.is_blacklist == is_blacklist
             ).first()
 
@@ -282,6 +282,7 @@ class DBOperations:
                         existing = session.query(Keyword).filter(
                             Keyword.rule_id == sync_rule_id,
                             Keyword.keyword == keyword,
+                            Keyword.is_regex == is_regex,
                             Keyword.is_blacklist == is_blacklist
                         ).first()
                         if existing:
@@ -338,9 +339,11 @@ class DBOperations:
         deleted_count = 0
         max_id = len(keywords)
 
+        unique_indices = sorted(set(indices), reverse=True)
+
         # 保存要删除的关键字信息，用于后续同步
         keywords_to_delete = []
-        for idx in indices:
+        for idx in unique_indices:
             if 1 <= idx <= max_id:
                 keyword = keywords[idx - 1]
                 keywords_to_delete.append({
@@ -486,9 +489,11 @@ class DBOperations:
         deleted_count = 0
         max_id = len(rules)
 
+        unique_indices = sorted(set(indices), reverse=True)
+
         # 保存要删除的替换规则信息，用于后续同步
         rules_to_delete = []
-        for idx in indices:
+        for idx in unique_indices:
             if 1 <= idx <= max_id:
                 replace_rule = rules[idx - 1]
                 rules_to_delete.append({
