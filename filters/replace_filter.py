@@ -1,6 +1,7 @@
 import logging
 import re
 from filters.base_filter import BaseFilter
+from utils.regex_safety import RegexTimeoutError, safe_re_finditer, safe_re_sub
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +28,9 @@ class ReplaceFilter(BaseFilter):
                     break  # 如果是全文替换，就不继续处理其他规则
                 else:
                     try:
-                        # 正则替换 - 先收集匹配结果再替换
                         old_text = message_text
-                        matches = list(re.finditer(replace_rule.pattern, message_text))
-                        message_text = re.sub(
+                        matches = safe_re_finditer(replace_rule.pattern, message_text)
+                        message_text = safe_re_sub(
                             replace_rule.pattern,
                             replace_rule.content or '',
                             message_text
@@ -41,6 +41,8 @@ class ReplaceFilter(BaseFilter):
                     f'执行部分替换，原文长度: {len(old_text)}, '
                     f'命中次数: {len(matched_texts)}, 替换后长度: {len(message_text)}'
                 )
+                    except RegexTimeoutError:
+                        logger.error(f'替换规则超时: {replace_rule.pattern}')
                     except re.error as e:
                         logger.error(f'替换规则格式错误: {replace_rule.pattern}, 错误: {str(e)}')
             

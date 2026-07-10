@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 import asyncio
 
 from utils.constants import AI_SETTINGS_TEXT,MEDIA_SETTINGS_TEXT
+from utils.regex_safety import RegexTimeoutError, safe_re_search
 
 logger = logging.getLogger(__name__)
 
@@ -648,9 +649,12 @@ async def check_keyword_match(keyword, message_text):
     logger.info(f"检查关键字，正则模式: {keyword.is_regex}")
     if keyword.is_regex:
         try:
-            if re.search(keyword.keyword, message_text):
+            if safe_re_search(keyword.keyword, message_text):
                 logger.info("正则匹配成功")
                 return True
+        except RegexTimeoutError:
+            logger.error("正则表达式超时: %s", keyword.keyword)
+            return bool(keyword.is_blacklist)
         except re.error:
             logger.error("正则表达式错误: %s", keyword.keyword)
             return bool(keyword.is_blacklist)
