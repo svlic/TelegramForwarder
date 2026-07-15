@@ -27,11 +27,9 @@ class StateManager:
         try:
             await asyncio.sleep(timeout_minutes * 60)
             async with self._lock:
-                if key in self._states:
-                    del self._states[key]
+                if self._states.pop(key, None) is not None:
                     logger.info(f"状态超时自动清除 - key: {key}")
-                if key in self._timeout_tasks:
-                    del self._timeout_tasks[key]
+                self._timeout_tasks.pop(key, None)
         except asyncio.CancelledError:
             pass
     
@@ -40,25 +38,19 @@ class StateManager:
         async with self._lock:
             state_data = self._states.get(key)
         if state_data:
-            if len(state_data) == 3:
-                state, message, state_type = state_data
-                logger.info(f"获取状态 - key: {key}, state: {state}, type: {state_type}")
-            else:
-                state, message = state_data
-                state_type = None
-                logger.info(f"获取状态 - key: {key}, state: {state}, type: None (旧格式)")
+            state, message, state_type = state_data
+            logger.info(f"获取状态 - key: {key}, state: {state}, type: {state_type}")
             return state, message, state_type
         return None, None, None
     
     async def clear_state(self, user_id: int, chat_id: int) -> None:
         key = (int(user_id), normalize_state_chat_id(chat_id))
         async with self._lock:
-            if key in self._states:
-                del self._states[key]
+            if self._states.pop(key, None) is not None:
                 logger.info(f"清除状态 - key: {key}")
-            if key in self._timeout_tasks:
-                self._timeout_tasks[key].cancel()
-                del self._timeout_tasks[key]
+            task = self._timeout_tasks.pop(key, None)
+            if task is not None:
+                task.cancel()
         logger.debug(f"当前所有状态: {self._states}")
 
 # 创建全局实例

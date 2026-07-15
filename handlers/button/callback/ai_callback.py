@@ -69,13 +69,10 @@ async def callback_ai_settings(event, rule_id, session, message, data):
     rule = session.get(ForwardRule, int(rule_id))
     if rule:
         await event.edit(await get_ai_settings_text(rule), buttons=await create_ai_settings_buttons(rule))
-    return
-
 
 
 async def callback_set_summary_time(event, rule_id, session, message, data):
     await event.edit("请选择总结时间：", buttons=await create_summary_time_buttons(rule_id, page=0))
-    return
 
 async def callback_set_summary_prompt(event, rule_id, session, message, data):
     """处理设置AI总结提示词的回调"""
@@ -106,21 +103,16 @@ async def callback_set_ai_prompt(event, rule_id, session, message, data):
     )
 
 
-   
-            
-
 async def callback_time_page(event, rule_id, session, message, data):
     _, rule_id, page = data.split(':')
     page = int(page)
     await event.edit("请选择总结时间：", buttons=await create_summary_time_buttons(rule_id, page=page))
-    return
 
 
 async def callback_model_page(event, rule_id, session, message, data):
     _, rule_id, page = data.split(':')
     page = int(page)
     await event.edit("请选择AI模型：", buttons=await create_model_buttons(rule_id, page=page))
-    return
 
 
 async def callback_select_time(event, rule_id, session, message, data):
@@ -195,7 +187,6 @@ async def callback_select_time(event, rule_id, session, message, data):
         except Exception as e:
             logger.error(f"设置总结时间时出错: {str(e)}")
             logger.error(f"错误详情: {traceback.format_exc()}")
-    return
 
 
 async def callback_select_model(event, rule_id, session, message, data):
@@ -253,8 +244,6 @@ async def callback_select_model(event, rule_id, session, message, data):
     except Exception as e:
         logger.error(f"选择AI模型时出错: {str(e)}")
         logger.exception(e)
-    return
-
 
 
 async def callback_set_ai_model(event, rule_id, session, message, data):
@@ -275,17 +264,14 @@ async def callback_set_ai_model(event, rule_id, session, message, data):
 
 async def callback_cancel_set_model(event, rule_id, session, message, data):
     await _cancel_ai_setting(event, session, data)
-    return
 
 
 async def callback_cancel_set_prompt(event, rule_id, session, message, data):
     await _cancel_ai_setting(event, session, data)
-    return
 
 
 async def callback_cancel_set_summary(event, rule_id, session, message, data):
     await _cancel_ai_setting(event, session, data)
-    return
 
 async def callback_summary_now(event, rule_id, session, message, data):
     # 处理立即执行总结的回调
@@ -329,4 +315,3 @@ async def callback_summary_now(event, rule_id, session, message, data):
     finally:
         session.close()
     
-    return

@@ -2,6 +2,10 @@ from telethon import TelegramClient, types
 from telethon.tl.types import BotCommand
 from telethon.tl.functions.bots import SetBotCommandsRequest
 from dotenv import load_dotenv
+
+# load_dotenv before utils.constants so env-backed values are populated at import
+load_dotenv()
+
 from models.models import init_db
 from message_listener import setup_listeners
 import os
@@ -14,21 +18,17 @@ from scheduler.summary_scheduler import SummaryScheduler
 from scheduler.chat_updater import ChatUpdater
 from handlers.bot_handler import send_welcome_message
 from utils.log_config import setup_logging
-from utils.constants import TEMP_DIR
+from utils.constants import TEMP_DIR, API_ID, API_HASH, BOT_TOKEN, PHONE_NUMBER
 
 # 设置日志配置
 setup_logging()
 
 logger = logging.getLogger(__name__)
 
-# 加载环境变量
-load_dotenv()
-
-# 从环境变量获取配置
-api_id = os.getenv('API_ID')
-api_hash = os.getenv('API_HASH')
-bot_token = os.getenv('BOT_TOKEN')
-phone_number = os.getenv('PHONE_NUMBER')
+api_id = API_ID
+api_hash = API_HASH
+bot_token = BOT_TOKEN
+phone_number = PHONE_NUMBER
 
 # 创建 DBOperations 实例
 db_ops = None
@@ -213,19 +213,6 @@ async def register_bot_commands(bot):
         BotCommand(
             command='import_replace',
             description='导入替换规则'
-        ),
-        # UFB相关功能
-        BotCommand(
-            command='ufb_bind',
-            description='绑定ufb域名'
-        ),
-        BotCommand(
-            command='ufb_unbind',
-            description='解绑ufb域名'
-        ),
-        BotCommand(
-            command='ufb_item_change',
-            description='切换ufb同步配置类型'
         ),
         BotCommand(
             command='clear_all_keywords',

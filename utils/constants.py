@@ -5,7 +5,6 @@ API_ID = os.getenv('API_ID')
 API_HASH = os.getenv('API_HASH')
 PHONE_NUMBER = os.getenv('PHONE_NUMBER')
 BOT_TOKEN = os.getenv('BOT_TOKEN')
-USER_ID = int(os.getenv('USER_ID', 0))
 
 ######### AI 配置 #########
 # 用户配置的模型列表 (逗号分隔，如: gpt-4o,claude-3-sonnet,gemini-2.0-flash)
@@ -30,14 +29,8 @@ CUSTOM_AI_API_KEY = os.getenv('CUSTOM_AI_API_KEY', '')
 CUSTOM_AI_API_BASE = os.getenv('CUSTOM_AI_API_BASE', '')
 
 ######### 可选配置 #########
-ADMINS = os.getenv('ADMINS', '')
 DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./db/forward.db')
 DEFAULT_TIMEZONE = os.getenv('DEFAULT_TIMEZONE', 'Asia/Shanghai')
-
-# UFB 联动
-UFB_ENABLED = os.getenv('UFB_ENABLED', 'false').lower() == 'true'
-UFB_SERVER_URL = os.getenv('UFB_SERVER_URL', '')
-UFB_TOKEN = os.getenv('UFB_TOKEN', '')
 
 ######### 运行时默认值 (无需在 .env 中配置) #########
 
