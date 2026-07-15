@@ -30,7 +30,6 @@ Telegram 转发器是一个消息转发与内容处理工具。只要你的用�
 - ✏️ **编辑模式**：支持直接编辑原消息，也支持普通转发模式
 - 🔗 **评论区直达**：原消息有评论区时可自动添加跳转按钮
 - 🔁 **规则同步**：支持把当前规则的设置、关键词和替换规则同步到其他规则
-- ☁️ **UFB 联动**：可与 UniversalForumBlock 同步屏蔽项
 - 🔗 **消息链接转发**：向 Bot 私聊发送 Telegram 消息链接即可复制转发原消息
 
 ## 📋 目录
@@ -59,7 +58,6 @@ Telegram 转发器是一个消息转发与内容处理工具。只要你的用�
     - [定时总结](#定时总结)
 - [🎯 特殊功能](#-特殊功能)
   - [🔗 链接转发功能](#-链接转发功能)
-  - [🔄 与通用论坛屏蔽插件联动](#-与通用论坛屏蔽插件联动)
 - [📝 命令列表](#-命令列表)
 - [💐 致谢](#-致谢)
 - [☕ 捐赠](#-捐赠)
@@ -118,11 +116,6 @@ DEFAULT_TIMEZONE=Asia/Shanghai
 AI_MODELS=
 CUSTOM_AI_API_KEY=
 CUSTOM_AI_API_BASE=
-
-# UFB 联动
-UFB_ENABLED=false
-UFB_SERVER_URL=
-UFB_TOKEN=
 ```
 
 ### 3️⃣ 启动服务
@@ -301,7 +294,6 @@ AI 处理（可选，支持图片上传与 AI 后二次关键词过滤）
 | 延迟秒数 | 从配置文件提供的秒数列表中选择，默认 5 秒 |
 | 同步规则 | 开启后把当前规则的操作同步到已选择的同步规则 |
 | 同步设置 | 选择当前规则要同步到哪些目标规则 |
-| UFB同步 | 仅在 `UFB_ENABLED=true` 时显示，用于开启当前规则的 UFB 联动 |
 
 #### AI 设置说明
 
@@ -446,28 +438,6 @@ https://t.me/c/123456789/123
 
 注意：链接转发只在给 Bot 的私聊中触发；如果无法访问频道、消息已删除或链接错误，会返回提示。
 
-### 🔄 与通用论坛屏蔽插件联动
-
-项目可与 [UniversalForumBlock](https://github.com/heavrnl/universalforumblock) 联动。
-
-1. 在 `.env` 中配置：
-   ```ini
-   UFB_ENABLED=true
-   UFB_SERVER_URL=
-   UFB_TOKEN=
-   ```
-2. 在已绑定好的聊天窗口中使用：
-   ```bash
-   /ufb_bind <论坛域名>
-   ```
-3. 使用 `/ufb_item_change(/uic)` 切换同步类型：主页关键字、主页用户名、内容页关键字、内容页用户名。
-4. 不再使用时执行：
-   ```bash
-   /ufb_unbind
-   ```
-
-开启后，设置菜单会显示 **UFB同步** 开关。只有启用了 UFB 的规则才会参与联动。
-
 ## 📝 命令列表
 
 ```bash
@@ -516,11 +486,6 @@ https://t.me/c/123456789/123
 /import_keyword(/ik) <同时发送文件> - 导入普通关键字
 /import_regex_keyword(/irk) <同时发送文件> - 导入正则关键字
 /import_replace(/ir) <同时发送文件> - 导入替换规则
-
-UFB相关
-/ufb_bind(/ub) <域名> - 绑定 UFB 域名
-/ufb_unbind(/uu) - 解绑 UFB 域名
-/ufb_item_change(/uic) - 切换 UFB 同步配置类型
 
 危险命令
 /clear_all(/ca) - 清空所有聊天、规则、关键字和替换规则；需要输入确认文本
