@@ -6,9 +6,6 @@ pyaes==1.6.1
 # Database
 SQLAlchemy==2.0.37
 
-# HTTP & Network
-websockets==14.1
-
 # AI Providers
 openai==1.63.2
 

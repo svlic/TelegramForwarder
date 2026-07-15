@@ -24,8 +24,6 @@ ENV/
 /.idea
 /example
 /config
-/ufb/.idea
-ufb/config/config.json
 /.config
 /images/logo/svg
 /test
