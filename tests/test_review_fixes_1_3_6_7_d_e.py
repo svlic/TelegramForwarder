@@ -235,3 +235,196 @@ class InitFilterTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DeleteRuleCascadeTests(unittest.IsolatedAsyncioTestCase):
+    """Defect 1: deleting a rule with keywords must not raise IntegrityError."""
+
+    async def test_handle_delete_rule_cleans_children_then_deletes(self):
+        from handlers.command_handlers import handle_delete_rule_command
+        from models.models import (
+            ForwardRule,
+            Keyword,
+            ReplaceRule,
+            MediaExtensions,
+            MediaTypes,
+            RuleSync,
+        )
+
+        session = MagicMock()
+        rule = SimpleNamespace(id=7)
+        session.get.return_value = rule
+
+        query = MagicMock()
+        session.query.return_value = query
+        query.filter.return_value = query
+        query.delete.return_value = 1
+
+        event = SimpleNamespace(
+            client=MagicMock(),
+            message=SimpleNamespace(chat_id=1, id=2),
+        )
+
+        cm = MagicMock()
+        cm.__enter__.return_value = session
+        cm.__exit__.return_value = False
+
+        with (
+            patch("handlers.command_handlers.get_db_session", return_value=cm),
+            patch(
+                "handlers.command_handlers.rule_belongs_to_current_chat",
+                new_callable=AsyncMock,
+                return_value=True,
+            ),
+            patch(
+                "handlers.command_handlers.check_and_clean_chats",
+                new_callable=AsyncMock,
+                return_value=0,
+            ),
+            patch(
+                "handlers.command_handlers.async_delete_user_message",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "handlers.command_handlers.reply_and_delete",
+                new_callable=AsyncMock,
+            ) as reply,
+        ):
+            await handle_delete_rule_command(event, "delete_rule", ["delete_rule", "7"])
+
+        deleted_models = [c.args[0] for c in session.query.call_args_list]
+        self.assertEqual(
+            deleted_models,
+            [ReplaceRule, Keyword, MediaExtensions, MediaTypes, RuleSync, RuleSync],
+        )
+        self.assertEqual(query.delete.call_count, 6)
+        session.delete.assert_called_once_with(rule)
+        session.commit.assert_called()
+        reply.assert_awaited()
+        self.assertIn("成功删除", reply.await_args.args[1])
+
+    async def test_session_delete_rule_with_keywords_cascade(self):
+        """ORM cascade path: session.delete(rule) removes Keyword children."""
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from models.models import Base, Chat, ForwardRule, Keyword
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+
+        src = Chat(telegram_chat_id="1", name="src")
+        dst = Chat(telegram_chat_id="2", name="dst")
+        session.add_all([src, dst])
+        session.flush()
+        rule = ForwardRule(source_chat_id=src.id, target_chat_id=dst.id)
+        session.add(rule)
+        session.flush()
+        session.add(Keyword(rule_id=rule.id, keyword="spam", is_regex=False, is_blacklist=True))
+        session.commit()
+        rule_id = rule.id
+
+        rule = session.get(ForwardRule, rule_id)
+        session.delete(rule)
+        session.commit()
+
+        self.assertIsNone(session.get(ForwardRule, rule_id))
+        self.assertEqual(session.query(Keyword).filter(Keyword.rule_id == rule_id).count(), 0)
+        session.close()
+
+
+class RegexProcessIsolationTests(unittest.TestCase):
+    """Defect 3: catastrophic regex must time out and be killable."""
+
+    def test_catastrophic_pattern_raises_timeout(self):
+        import time
+        from utils.regex_safety import safe_re_search, RegexTimeoutError
+
+        t0 = time.time()
+        with self.assertRaises(RegexTimeoutError):
+            safe_re_search(r"(a+)+$", "a" * 28 + "!", timeout=0.4)
+        elapsed = time.time() - t0
+        self.assertLess(elapsed, 3.0)
+
+    def test_safe_re_sub_works(self):
+        from utils.regex_safety import safe_re_sub
+
+        self.assertEqual(safe_re_sub(r"foo", "bar", "xxfooyy"), "xxbaryy")
+
+
+class SummarySessionReleaseTests(unittest.IsolatedAsyncioTestCase):
+    """Defect 5: DB session must close before Telegram/AI awaits."""
+
+    async def test_execute_summary_releases_session_before_network(self):
+        from scheduler.summary_scheduler import SummaryScheduler
+        from contextlib import contextmanager
+
+        closed = {"done": False}
+        network_after_close = []
+
+        rule = SimpleNamespace(
+            id=1,
+            is_summary=True,
+            source_chat=SimpleNamespace(telegram_chat_id="100", name="src"),
+            target_chat=SimpleNamespace(telegram_chat_id="200", name="dst"),
+            summary_time="00:00",
+            ai_model="gpt-test",
+            summary_prompt="sum: {messages}",
+            is_top_summary=False,
+        )
+
+        session = MagicMock()
+        session.get.return_value = rule
+
+        @contextmanager
+        def fake_db():
+            try:
+                yield session
+            finally:
+                closed["done"] = True
+
+        msg = SimpleNamespace(
+            id=10,
+            text="hello world",
+            date=MagicMock(),
+        )
+        # timezone-aware-ish: astimezone returns datetime-like in range
+        import pytz
+        from datetime import datetime, timedelta
+
+        tz = pytz.timezone("Asia/Shanghai")
+        now = datetime.now(tz)
+        msg.date = now - timedelta(hours=1)
+        msg.date = msg.date  # already aware
+
+        user_client = MagicMock()
+        user_client.get_messages = AsyncMock(return_value=[msg])
+
+        bot_client = MagicMock()
+        bot_client.send_message = AsyncMock(return_value=SimpleNamespace(id=99))
+
+        scheduler = SummaryScheduler(user_client, bot_client)
+
+        async def guarded_get_messages(*args, **kwargs):
+            network_after_close.append(closed["done"])
+            return [msg]
+
+        user_client.get_messages = guarded_get_messages
+
+        provider = MagicMock()
+        provider.process_message = AsyncMock(return_value="summary body")
+
+        with (
+            patch("scheduler.summary_scheduler.get_db_session", fake_db),
+            patch(
+                "scheduler.summary_scheduler.get_ai_provider",
+                return_value=provider,
+            ),
+        ):
+            await scheduler._execute_summary(1, is_now=True, lookback_hours=24)
+
+        self.assertTrue(closed["done"])
+        self.assertTrue(network_after_close)
+        self.assertTrue(all(network_after_close))
+        provider.process_message.assert_awaited()
