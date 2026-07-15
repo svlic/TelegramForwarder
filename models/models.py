@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Enum, UniqueConstraint, inspect, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from enums.enums import ForwardMode, PreviewMode, MessageMode, AddMode, HandleMode
 from utils.constants import DATABASE_URL, DEFAULT_MAX_MEDIA_SIZE, DEFAULT_SUMMARY_TIME
 import logging
@@ -31,9 +30,6 @@ class ForwardRule(Base):
     is_replace = Column(Boolean, default=False)
     is_preview = Column(Enum(PreviewMode), nullable=False, default=PreviewMode.FOLLOW)  # 三个值，开，关，按照原消息
     is_original_link = Column(Boolean, default=False)   # 是否附带原消息链接
-    is_ufb = Column(Boolean, default=False)
-    ufb_domain = Column(String, nullable=True)
-    ufb_item = Column(String, nullable=True,default='main')
     is_delete_original = Column(Boolean, default=False)  # 是否删除原始消息
     is_original_sender = Column(Boolean, default=False)  # 是否附带原始消息发送人名称
     userinfo_template = Column(String, default='**{name}**', nullable=True)  # 用户信息模板
@@ -257,9 +253,6 @@ def migrate_db(engine):
         'media_allow_text': 'ALTER TABLE forward_rules ADD COLUMN media_allow_text BOOLEAN DEFAULT FALSE',
         'media_caption_filter': 'ALTER TABLE forward_rules ADD COLUMN media_caption_filter BOOLEAN DEFAULT FALSE',
         'enable_ai_upload_image': 'ALTER TABLE forward_rules ADD COLUMN enable_ai_upload_image BOOLEAN DEFAULT FALSE',
-        'is_ufb': 'ALTER TABLE forward_rules ADD COLUMN is_ufb BOOLEAN DEFAULT FALSE',
-        'ufb_domain': 'ALTER TABLE forward_rules ADD COLUMN ufb_domain VARCHAR DEFAULT NULL',
-        'ufb_item': 'ALTER TABLE forward_rules ADD COLUMN ufb_item VARCHAR DEFAULT "main"',
     }
 
     keywords_new_columns = {

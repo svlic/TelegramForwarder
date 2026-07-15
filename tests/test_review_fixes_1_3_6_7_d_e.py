@@ -161,10 +161,9 @@ class KeywordOpsTests(unittest.IsolatedAsyncioTestCase):
         query.filter.return_value = query
         query.first.return_value = None
 
-        with patch.object(ops, "sync_to_server", new_callable=AsyncMock):
-            success, duplicate = await ops.add_keywords(
-                session, 1, ["hello"], is_regex=True, is_blacklist=False
-            )
+        success, duplicate = await ops.add_keywords(
+            session, 1, ["hello"], is_regex=True, is_blacklist=False
+        )
 
         filter_exprs = query.filter.call_args.args
         expr_repr = " ".join(str(e) for e in filter_exprs)
@@ -187,8 +186,7 @@ class KeywordOpsTests(unittest.IsolatedAsyncioTestCase):
         kw3 = SimpleNamespace(keyword="c", is_regex=False, is_blacklist=False)
         keywords = [kw1, kw2, kw3]
 
-        with patch.object(ops, "get_keywords", new_callable=AsyncMock, return_value=keywords), \
-             patch.object(ops, "sync_to_server", new_callable=AsyncMock):
+        with patch.object(ops, "get_keywords", new_callable=AsyncMock, return_value=keywords):
             deleted, remaining = await ops.delete_keywords(session, 1, [1, 3, 3, 1])
 
         self.assertEqual(deleted, 2)

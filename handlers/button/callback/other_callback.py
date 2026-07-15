@@ -8,17 +8,15 @@ from models.models import get_db_session
 from telethon import Button
 from sqlalchemy import inspect
 from utils.constants import RULES_PER_PAGE
-from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_state_identity, get_current_rule
+from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_state_identity
 from utils.auto_delete import send_message_and_delete
 from managers.state_manager import state_manager
 
 logger = logging.getLogger(__name__)
 
 
-
 async def callback_other_settings(event, rule_id, session, message, data):
     await event.edit("其他设置：", buttons=await create_other_settings_buttons(rule_id=rule_id))
-    return
 
 async def callback_copy_rule(event, rule_id, session, message, data):
     """显示复制规则选择界面
@@ -44,7 +42,6 @@ async def callback_copy_rule(event, rule_id, session, message, data):
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer("显示复制规则界面失败")
 
-    return
 
 async def create_copy_rule_buttons(event, rule_id, page=0):
     """创建复制规则按钮列表
@@ -345,7 +342,6 @@ async def callback_perform_copy_rule(event, rule_id_data, session, message, data
         logger.error(f"复制规则时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer(f"复制规则失败: {str(e)}")
-    return
 
 async def callback_copy_keyword(event, rule_id, session, message, data):
     """复制关键字
@@ -362,7 +358,6 @@ async def callback_copy_keyword(event, rule_id, session, message, data):
         logger.error(f"显示复制关键字选择界面时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer("显示复制关键字界面失败")
-    return
 
 async def callback_copy_replace(event, rule_id, session, message, data):
     """复制替换规则
@@ -379,7 +374,6 @@ async def callback_copy_replace(event, rule_id, session, message, data):
         logger.error(f"显示复制替换规则选择界面时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer("显示复制替换规则界面失败")
-    return
 
 async def callback_perform_copy_keyword(event, rule_id_data, session, message, data):
     """执行复制关键字操作
@@ -463,7 +457,6 @@ async def callback_perform_copy_keyword(event, rule_id_data, session, message, d
         logger.error(f"复制关键字时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer(f"复制关键字失败: {str(e)}")
-    return
 
 async def callback_perform_copy_replace(event, rule_id_data, session, message, data):
     """执行复制替换规则操作
@@ -524,7 +517,6 @@ async def callback_perform_copy_replace(event, rule_id_data, session, message, d
         logger.error(f"复制替换规则时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer(f"复制替换规则失败: {str(e)}")
-    return
 
 # 通用辅助函数
 async def show_rule_selection(event, rule_id, data, title, callback_action):
@@ -747,7 +739,6 @@ async def callback_clear_keyword(event, rule_id, session, message, data):
         title="请选择要清空关键字的规则：",
         error_label="显示清空关键字界面",
     )
-    return
 
 
 async def callback_clear_replace(event, rule_id, session, message, data):
@@ -762,7 +753,6 @@ async def callback_clear_replace(event, rule_id, session, message, data):
         title="请选择要清空替换规则的规则：",
         error_label="显示清空替换规则界面",
     )
-    return
 
 async def callback_delete_rule(event, rule_id, session, message, data):
     """显示删除规则选择界面"""
@@ -776,7 +766,6 @@ async def callback_delete_rule(event, rule_id, session, message, data):
         title="请选择要删除的规则：",
         error_label="显示删除规则界面",
     )
-    return
 
 # 执行清空关键字的回调
 async def callback_perform_clear_keyword(event, rule_id_data, session, message, data):
@@ -843,7 +832,6 @@ async def callback_perform_clear_keyword(event, rule_id_data, session, message, 
         logger.error(f"清空关键字时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer(f"清空关键字失败: {str(e)}")
-    return
 
 # 执行清空替换规则的回调
 async def callback_perform_clear_replace(event, rule_id_data, session, message, data):
@@ -910,7 +898,6 @@ async def callback_perform_clear_replace(event, rule_id_data, session, message, 
         logger.error(f"清空替换规则时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer(f"清空替换规则失败: {str(e)}")
-    return
 
 # 执行删除规则的回调
 async def callback_perform_delete_rule(event, rule_id_data, session, message, data):
@@ -1015,7 +1002,6 @@ async def callback_perform_delete_rule(event, rule_id_data, session, message, da
         logger.error(f"删除规则时出错: {str(e)}")
         logger.error(f"错误详情: {traceback.format_exc()}")
         await event.answer(f"删除规则失败: {str(e)}")
-    return
 
 async def _start_template_state(event, rule_id, session, message, *, state_prefix, state_type, template_attr, template_name, help_text, cancel_action):
     logger.info(f"开始处理设置{template_name}回调 - event: {event}, rule_id: {rule_id}")
@@ -1076,7 +1062,6 @@ async def callback_set_userinfo_template(event, rule_id, session, message, data)
         help_text=help_text,
         cancel_action="cancel_set_userinfo",
     )
-    return
 
 async def callback_set_time_template(event, rule_id, session, message, data):
     """设置时间模板"""
@@ -1097,17 +1082,14 @@ async def callback_set_time_template(event, rule_id, session, message, data):
         help_text=help_text,
         cancel_action="cancel_set_time",
     )
-    return
 
 async def callback_cancel_set_userinfo(event, rule_id, session, message, data):
     """取消设置用户信息模板"""
     await _cancel_template_state(event, data)
-    return
 
 async def callback_cancel_set_time(event, rule_id, session, message, data):
     """取消设置时间模板"""
     await _cancel_template_state(event, data)
-    return
 
 async def callback_set_original_link_template(event, rule_id, session, message, data):
     """设置原始链接模板"""
@@ -1128,7 +1110,6 @@ async def callback_set_original_link_template(event, rule_id, session, message, 
         help_text=help_text,
         cancel_action="cancel_set_original_link",
     )
-    return
 
 async def _cancel_template_state(event, data):
     rule_id = data.split(':')[1]
@@ -1144,7 +1125,6 @@ async def _cancel_template_state(event, data):
 async def callback_cancel_set_original_link(event, rule_id, session, message, data):
     """取消设置原始链接模板"""
     await _cancel_template_state(event, data)
-    return
 
 
 async def _toggle_other_setting(event, session, rule_id, *, field_name, log_label):
@@ -1172,7 +1152,6 @@ async def callback_toggle_reverse_blacklist(event, rule_id, session, message, da
         field_name="enable_reverse_blacklist",
         log_label="反转黑名单设置",
     )
-    return
 
 
 async def callback_toggle_reverse_whitelist(event, rule_id, session, message, data):
@@ -1184,48 +1163,3 @@ async def callback_toggle_reverse_whitelist(event, rule_id, session, message, da
         field_name="enable_reverse_whitelist",
         log_label="反转白名单设置",
     )
-    return
-
-
-async def callback_toggle_ufb(event, rule_id, session, message, data):
-    """切换 UFB 同步设置"""
-    await _toggle_other_setting(
-        event,
-        session,
-        rule_id,
-        field_name="is_ufb",
-        log_label="UFB同步设置",
-    )
-    return
-
-
-UFB_ITEM_VALUES = frozenset({"main", "content", "main_username", "content_username"})
-
-
-async def callback_ufb_item(event, rule_id, session, message, data):
-    """Set UFB sync item type from /ufb_item_change inline buttons (ufb_item:<type>)."""
-    item = (rule_id or "").strip()
-    if item not in UFB_ITEM_VALUES:
-        await event.answer("无效的 UFB 配置类型")
-        return
-
-    rule_info = await get_current_rule(session, event)
-    if not rule_info:
-        await event.answer("请先使用 /switch 选择源聊天")
-        return
-
-    rule, _source_chat = rule_info
-    rule.ufb_item = item
-    session.commit()
-
-    labels = {
-        "main": "主页关键字",
-        "content": "内容页关键字",
-        "main_username": "主页用户名",
-        "content_username": "内容页用户名",
-    }
-    await event.answer(f"已切换为: {labels.get(item, item)}")
-    try:
-        await message.delete()
-    except Exception as e:
-        logger.warning(f"删除 ufb_item 选择消息后失败: {e}")

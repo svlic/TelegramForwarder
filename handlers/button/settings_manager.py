@@ -1,6 +1,5 @@
 from enums.enums import ForwardMode, MessageMode, PreviewMode, AddMode, HandleMode
 from telethon import Button
-from utils.constants import UFB_ENABLED
 
 # 规则配置字段定义
 RULE_SETTINGS = {
@@ -86,15 +85,6 @@ RULE_SETTINGS = {
             False: '不附带'
         },
         'toggle_action': 'toggle_original_link',
-        'toggle_func': lambda current: not current
-    },
-    'is_ufb': {
-        'display_name': 'UFB同步',
-        'values': {
-            True: '开启',
-            False: '关闭'
-        },
-        'toggle_action': 'toggle_ufb',
         'toggle_func': lambda current: not current
     },
     'is_original_sender': {
@@ -522,14 +512,6 @@ async def create_buttons(rule):
             f"set_sync_rule:{rule.id}"
         )
     ])
-
-    if UFB_ENABLED:
-        buttons.append([
-            Button.inline(
-                f"☁️ UFB同步: {RULE_SETTINGS['is_ufb']['values'][rule.is_ufb]}",
-                f"toggle_ufb:{rule.id}"
-            )
-        ])
 
     buttons.append([
         Button.inline(

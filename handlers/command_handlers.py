@@ -671,11 +671,6 @@ async def handle_help_command(event, command):
         "/import_regex_keyword(/irk) <同时发送文件> - 导入正则关键字\n"
         "/import_replace(/ir) <同时发送文件> - 导入替换规则\n\n"
 
-        "**UFB相关**\n"
-        "/ufb_bind(/ub) <域名> - 绑定UFB域名\n"
-        "/ufb_unbind(/uu) - 解绑UFB域名\n"
-        "/ufb_item_change(/uic) - 切换UFB同步配置类型\n\n"
-
         "💡 **提示**\n"
         "• 括号内为命令的简写形式\n"
         "• 尖括号 <> 表示必填参数\n"
@@ -870,83 +865,6 @@ async def handle_import_command(event, command):
         logger.error(f'导入过程出错: {str(e)}')
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
         await reply_and_delete(event,'导入过程出错，请检查日志')
-
-async def handle_ufb_item_change_command(event, command):
-    """处理 ufb_item_change 命令"""
-
-    with get_db_session() as session:
-        rule_info = await get_current_rule(session, event)
-        if not rule_info:
-            return
-
-        rule, source_chat = rule_info
-
-        # 创建4个按钮
-        buttons = [
-            [
-                Button.inline("主页关键字", "ufb_item:main"),
-                Button.inline("内容页关键字", "ufb_item:content")
-            ],
-            [
-                Button.inline("主页用户名", "ufb_item:main_username"),
-                Button.inline("内容页用户名", "ufb_item:content_username")
-            ]
-        ]
-
-        # 发送带按钮的消息
-        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-        await reply_and_delete(event, "请选择要切换的UFB同步配置类型:", buttons=buttons)
-
-async def handle_ufb_bind_command(event, command):
-    """处理 ufb_bind 命令"""
-    with get_db_session() as session:
-        rule_info = await get_current_rule(session, event)
-        if not rule_info:
-            return
-
-        rule, source_chat = rule_info
-
-        # 从消息中获取域名和类型
-        parts = event.message.text.split()
-        if len(parts) < 2 or len(parts) > 3:
-            await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-            await reply_and_delete(event,'用法: /ufb_bind <域名> [类型]\n类型可选: main, content, main_username, content_username\n例如: /ufb_bind example.com main')
-            return
-
-        domain = parts[1].strip().lower()
-        item = 'main'  # 默认值
-
-        if len(parts) == 3:
-            item = parts[2].strip().lower()
-            if item not in ['main', 'content', 'main_username', 'content_username']:
-                await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-                await reply_and_delete(event,'类型必须是以下之一: main, content, main_username, content_username')
-                return
-
-        # 更新规则的 ufb_domain 和 ufb_item
-        rule.ufb_domain = domain
-        rule.ufb_item = item
-        session.commit()
-
-        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-        await reply_and_delete(event,f'已绑定 UFB 域名: {domain}\n类型: {item}\n规则: 来自 {source_chat.name}')
-
-async def handle_ufb_unbind_command(event, command):
-    """处理 ufb_unbind 命令"""
-    with get_db_session() as session:
-        rule_info = await get_current_rule(session, event)
-        if not rule_info:
-            return
-
-        rule, source_chat = rule_info
-
-        # 清除规则的 ufb_domain
-        old_domain = rule.ufb_domain
-        rule.ufb_domain = None
-        session.commit()
-
-        await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-        await reply_and_delete(event,f'已解绑 UFB 域名: {old_domain or "无"}\n规则: 来自 {source_chat.name}')
 
 async def handle_clear_all_keywords_command(event, command):
     """处理清除所有关键字命令"""
