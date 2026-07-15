@@ -1873,25 +1873,39 @@ async def handle_delete_rule_command(event, command, parts):
                 continue
 
             try:
-                # 删除规则（关联的替换规则、关键字和媒体类型会自动删除）
+                session.query(ReplaceRule).filter(ReplaceRule.rule_id == rule.id).delete(
+                    synchronize_session=False
+                )
+                session.query(Keyword).filter(Keyword.rule_id == rule.id).delete(
+                    synchronize_session=False
+                )
+                session.query(MediaExtensions).filter(MediaExtensions.rule_id == rule.id).delete(
+                    synchronize_session=False
+                )
+                session.query(MediaTypes).filter(MediaTypes.rule_id == rule.id).delete(
+                    synchronize_session=False
+                )
+                session.query(RuleSync).filter(RuleSync.rule_id == rule.id).delete(
+                    synchronize_session=False
+                )
+                session.query(RuleSync).filter(RuleSync.sync_rule_id == rule.id).delete(
+                    synchronize_session=False
+                )
                 session.delete(rule)
-
+                session.commit()
                 success_ids.append(rule_id)
             except Exception as e:
+                session.rollback()
                 logger.error(f'删除规则 {rule_id} 时出错: {str(e)}')
+                logger.error(traceback.format_exc())
                 failed_ids.append(rule_id)
 
-        # 提交事务
-        session.commit()
+        deleted_chats = 0
+        if success_ids:
+            deleted_chats = await check_and_clean_chats(session)
+            if deleted_chats > 0:
+                logger.info(f"删除规则后清理了 {deleted_chats} 个未使用的聊天记录")
 
-        # 清理不再使用的聊天记录
-        # 这里直接对整个数据库进行一次清理，不需要单独处理每个规则
-        # 因为所有规则都已经从数据库中删除
-        deleted_chats = await check_and_clean_chats(session)
-        if deleted_chats > 0:
-            logger.info(f"删除规则后清理了 {deleted_chats} 个未使用的聊天记录")
-
-        # 构建响应消息
         response_parts = []
         if success_ids:
             response_parts.append(f'✅ 成功删除规则: {", ".join(map(str, success_ids))}')
@@ -1903,4 +1917,4 @@ async def handle_delete_rule_command(event, command, parts):
             response_parts.append(f'🧹 清理了 {deleted_chats} 个未使用的聊天记录')
 
         await async_delete_user_message(event.client, event.message.chat_id, event.message.id, 0)
-        await reply_and_delete(event,'\n'.join(response_parts) or '没有规则被删除')
+        await reply_and_delete(event, '\n'.join(response_parts) or '没有规则被删除')
