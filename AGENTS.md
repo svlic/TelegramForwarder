@@ -1,117 +1,57 @@
-# PROJECT KNOWLEDGE BASE
+# TelegramForwarder Agent Guide
 
-**Generated:** 2026-04-15
-**Commit:** 96093f9
-**Branch:** main
+## 项目
 
-## OVERVIEW
-TelegramForwarder v1.7.2 - Telegram消息转发机器人，支持关键词过滤、正则替换、AI处理。
+Python 3.11 的异步 Telegram 消息转发器。`user_client` 监听源聊天，`bot_client` 处理命令并向目标聊天发送消息；规则和状态分别存于 SQLAlchemy 与内存状态管理器。
 
-## STRUCTURE
-```
-./
-├── main.py              # 入口 - 双客户端启动 (user + bot)
-├── message_listener.py  # 消息监听器
-├── models/              # SQLAlchemy ORM
-├── handlers/            # 命令/按钮处理
-├── filters/             # 过滤器链 (16个过滤器)
-├── ai/                  # AI提供商 (OpenAI/Claude/Gemini等)
-├── utils/               # 工具函数
-├── scheduler/           # 定时任务
-├── managers/            # 状态管理
-└── enums/               # 枚举定义
-```
+## 先看这里
 
-## WHERE TO LOOK
-| Task | Location | Notes |
-|------|----------|-------|
-| 消息过滤逻辑 | `filters/process.py` | 过滤器入口 |
-| 命令处理 | `handlers/command_handlers.py` | 所有/command |
-| 按钮回调 | `handlers/button/` | 菜单交互 |
-| AI调用 | `ai/` | Provider模式 |
-| 转发处理 | `message_listener.py` + `filters/process.py` | 监听与过滤器链 |
+| 任务 | 入口 |
+| --- | --- |
+| 启动与客户端生命周期 | `main.py` |
+| 消息监听、规则查询、媒体组去重 | `message_listener.py` |
+| 转发过滤链 | `filters/process.py`、`filters/context.py` |
+| Bot 命令与按钮 | `handlers/bot_handler.py`、`handlers/command_handlers.py`、`handlers/button/` |
+| 数据模型与会话 | `models/models.py`、`models/db_operations.py` |
+| AI 处理与定时总结 | `ai/`、`scheduler/summary_scheduler.py` |
+| 状态与聊天 ID 工具 | `managers/state_manager.py`、`utils/common.py` |
 
-## CODE MAP
-| Symbol | Type | Location | Role |
-|--------|------|----------|------|
-| `process_forward_rule` | function | `filters/process.py` | 过滤器链主入口 |
-| `handle_command` | function | `handlers/bot_handler.py` | 命令分发 |
-| `DBOperations` | class | `models/db_operations.py` | 数据库操作 |
-| `FilterChain` | class | `filters/filter_chain.py` | 过滤器编排 |
-| `SummaryScheduler` | class | `scheduler/summary_scheduler.py` | AI定时总结 |
+消息处理顺序和领域约束见 [`kb/docs/message-processing.md`](kb/docs/message-processing.md)。面向用户的功能和配置以 [`README.md`](README.md) 为准。
 
-## FILTER FLOW (执行顺序)
-```
-消息 → init_filter → delay_filter → keyword_filter →
-replace_filter → media_filter → ai_filter → info_filter →
-comment_button_filter → edit_filter → sender_filter →
-reply_filter
-```
+## 必须遵守
 
-## CONVENTIONS
-- **日志**: 使用`logging.getLogger(__name__)`
-- **异步**: `async/await` + `asyncio`; 同步调用用`loop.run_until_complete()`
-- **状态管理**: `managers/state_manager.py` 单例模式
-- **DB会话**: `models/models.py` 的 `get_session()` 获取会话
-- **媒体组**: 用 `grouped_id` 检测，`PROCESSED_GROUPS` 缓存防重
-- **频道ID**: Telegram频道ID需加`100`前缀
-- **双客户端**: `user_client` 转发 + `bot_client` 处理命令
+- Telethon 调用必须 `await`；不要在事件循环中加入阻塞 I/O。
+- 数据库会话统一使用 `get_db_session()`；不要让会话跨越 Telethon 或 AI 网络调用。
+- 状态键统一由 `get_state_identity(event)` 生成。
+- 持久化聊天 ID 使用 `get_telegram_chat_db_id()`；只对频道或超级群组使用 `normalize_channel_id()`，不要给私聊 ID 添加 `-100` 前缀。
+- 过滤器通过 `MessageContext` 传递状态。新增或调整步骤时在 `filters/process.py` 注册，并同步更新领域文档。
+- EDIT 模式必须保留前置过滤结果，尤其是 `should_forward`、`media_blocked` 和 `skipped_media`。
+- 媒体组去重由 `message_listener.py` 管理；临时媒体由过滤链上下文清理，不要另建平行缓存或清理路径。
+- `ai` 包根只导出 `get_ai_provider`；具体 provider 从其定义模块导入。
+- `pyaes` 是 Telethon 的必需依赖，`cryptg` 是加密加速依赖；不要按“未直接导入”删除。
 
-## ANTI-PATTERNS (THIS PROJECT)
-- **禁止**: 在过滤器外直接操作数据库会话 - 用过滤器方法
-- **禁止**: 修改`PROCESSED_GROUPS`外部清除 - 用`clear_group_cache()`
-- **禁止**: 同步调用Telethon方法 - 必须`await`
+## 代码约定
 
-## COMMANDS
+- 日志使用 `logging.getLogger(__name__)`。
+- 优先小而直接的改动，复用现有函数和过滤器；不要为单次需求新增抽象层。
+- 用户交流使用中文；代码注释使用英文，仅解释原因或约束。
+- 不提交 `.env`、session、数据库、日志、下载文件等运行时数据。
+
+## 验证
+
 ```bash
-# 开发运行
+python -m pytest -q
 python main.py
 
-# Docker运行
-docker-compose up -d
-
-# 首次验证
-docker-compose run -it telegram-forwarder
+docker compose run --rm telegram-forwarder  # 首次登录
+docker compose up -d
 ```
 
-## 通用偏好
+运行 `main.py` 需要完整 `.env` 和 Telegram 凭据。无法做真实 Telegram 验证时，至少运行相关测试并说明未验证项。
 
-- 用中文回复，代码注释用英文，注释写 why 不写 how
-- 简洁直接，不要多余总结和解释
-- 直接写代码，不需要每次确认后再生成
+## 文档维护
 
-## 代码风格
-
-- 函数式优先，组合优于继承，TS/JS 中避免 OOP
-- 新功能优先复用/重构现有代码，不堆砌
-- KISS, DRY — 最简可行方案
-- 写代码时遵循 ai-coding-discipline 规则
-- 发现设计不合理：小问题直接重构，大问题原地加 TODO 并说明原因
-
-## 架构与设计
-
-- 从第一性原理解构问题 — 先明确什么是必须的，再决定怎么做
-- 警惕 XY 问题 — 多角度审视方案，先确认真正要解决的是什么，主动提出替代方案
-- 解决根本问题，不要 workaround — 如果现有架构不支持，重构它
-- 质疑不合理的需求和方向 — 发现问题立刻指出，不要等我问才说，不要奉承或无脑赞同
-- 架构设计时参考 ddia-principles 和 software-design-philosophy 规则
-- 技术选型推荐业内最佳实践 — 不确定时先 research，不要给过时的信息
-
-## 文档与上下文
-
-- 所有改动、上下文、tradeoff、背景信息都保存到项目的 `docs/ai/context/` 目录
-- 进行修改、架构设计、技术选型时同步更新或新建文档
-- 思考和决策也要落实到项目的 AGENTS.md，保留上下文记忆
-- 如果项目没有 `docs/ai/context/` 目录，先询问是否创建
-
-## NOTES
-- Bot模式下编辑消息需是管理员
-- 媒体组处理需防重 (5分钟缓存)
-- AI Provider使用统一`BaseProvider`接口
-- EDIT模式必须尊重前置过滤器的`should_forward`、`media_blocked`和`skipped_media`状态，避免媒体过滤后仍修改源消息
-- 频道消息监听中，数据库查询保留`/bind`存储的原始chat ID；状态管理键可使用`normalize_channel_id()`规范化ID
-- 读写`StateManager`时统一使用`utils.common.get_state_identity(event)`，避免频道场景 callback 与 listener 的 `(user_id, chat_id)` key 不一致
-- Docker日志轮转不要通过`DOCKER_LOG_MAX_SIZE` / `DOCKER_LOG_MAX_FILE`环境变量配置；应使用 Docker logging options
-- UFB（UniversalForumBlock）联动已整模块移除；不要重新引入 `ufb/`、`is_ufb`、`UFB_*` 环境变量或 `websockets` 依赖
-- `requirements.txt`中`pyaes`是Telethon必需依赖的显式pin，`cryptg`是Telethon加密加速依赖；不要作为未使用依赖直接删除
-- `ai/__init__.py`包根只承诺导出`get_ai_provider`，不要依赖`from ai import BaseAIProvider`
+- 用户可见行为或配置变化：更新 `README.md`。
+- 稳定的业务流程或跨模块约束：更新 `kb/docs/`。
+- 架构决策或非显然 trade-off：在 `docs/ai/context/` 留记录；普通小改动无需建文档。
+- 不在本文件记录版本号、提交号、固定文件数量等易漂移信息。
