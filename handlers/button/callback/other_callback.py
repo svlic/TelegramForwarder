@@ -3,10 +3,10 @@ from telethon.tl import types
 
 from handlers.button.button_helpers import create_other_settings_buttons, create_page_buttons
 from models.models import ForwardRule, MediaTypes, MediaExtensions, RuleSync, Keyword, ReplaceRule
+from models.db_operations import copy_rule_settings
 import logging
 from models.models import get_db_session
 from telethon import Button
-from sqlalchemy import inspect
 from utils.constants import RULES_PER_PAGE
 from utils.common import check_and_clean_chats, is_admin, get_manageable_rules, all_rules_belong_to_current_chat, rule_belongs_to_current_chat, get_state_identity
 from utils.auto_delete import send_message_and_delete
@@ -152,169 +152,18 @@ async def callback_perform_copy_rule(event, rule_id_data, session, message, data
             await event.answer('不能复制规则到自身')
             return
 
-        # 记录复制的各个部分成功数量
-        keywords_normal_success = 0
-        keywords_normal_skip = 0
-        keywords_regex_success = 0
-        keywords_regex_skip = 0
-        replace_rules_success = 0
-        replace_rules_skip = 0
-        media_extensions_success = 0
-        media_extensions_skip = 0
-        rule_syncs_success = 0
-        rule_syncs_skip = 0
-
-        # 复制普通关键字
-        for keyword in source_rule.keywords:
-            if not keyword.is_regex:  # 普通关键字
-                # 检查是否已存在
-                exists = any(not k.is_regex and k.keyword == keyword.keyword and k.is_blacklist == keyword.is_blacklist
-                           for k in target_rule.keywords)
-                if not exists:
-                    new_keyword = Keyword(
-                        rule_id=target_rule.id,
-                        keyword=keyword.keyword,
-                        is_regex=False,
-                        is_blacklist=keyword.is_blacklist
-                    )
-                    session.add(new_keyword)
-                    keywords_normal_success += 1
-                else:
-                    keywords_normal_skip += 1
-
-        # 复制正则关键字
-        for keyword in source_rule.keywords:
-            if keyword.is_regex:  # 正则关键字
-                # 检查是否已存在
-                exists = any(k.is_regex and k.keyword == keyword.keyword and k.is_blacklist == keyword.is_blacklist
-                           for k in target_rule.keywords)
-                if not exists:
-                    new_keyword = Keyword(
-                        rule_id=target_rule.id,
-                        keyword=keyword.keyword,
-                        is_regex=True,
-                        is_blacklist=keyword.is_blacklist
-                    )
-                    session.add(new_keyword)
-                    keywords_regex_success += 1
-                else:
-                    keywords_regex_skip += 1
-
-        # 复制替换规则
-        for replace_rule in source_rule.replace_rules:
-            # 检查是否已存在
-            exists = any(r.pattern == replace_rule.pattern and r.content == replace_rule.content
-                         for r in target_rule.replace_rules)
-            if not exists:
-                new_rule = ReplaceRule(
-                    rule_id=target_rule.id,
-                    pattern=replace_rule.pattern,
-                    content=replace_rule.content
-                )
-                session.add(new_rule)
-                replace_rules_success += 1
-            else:
-                replace_rules_skip += 1
-
-        # 复制媒体扩展名设置
-        if hasattr(source_rule, 'media_extensions') and source_rule.media_extensions:
-            for extension in source_rule.media_extensions:
-                # 检查是否已存在
-                exists = any(e.extension == extension.extension for e in target_rule.media_extensions)
-                if not exists:
-                    new_extension = MediaExtensions(
-                        rule_id=target_rule.id,
-                        extension=extension.extension
-                    )
-                    session.add(new_extension)
-                    media_extensions_success += 1
-                else:
-                    media_extensions_skip += 1
-
-        # 复制媒体类型设置
-        if hasattr(source_rule, 'media_types') and source_rule.media_types:
-            target_media_types = session.query(MediaTypes).filter_by(rule_id=target_rule.id).first()
-
-            if not target_media_types:
-                # 如果目标规则没有媒体类型设置，创建新的
-                target_media_types = MediaTypes(rule_id=target_rule.id)
-
-                # 使用inspect自动复制所有字段（除了id和rule_id）
-                media_inspector = inspect(MediaTypes)
-                for column in media_inspector.columns:
-                    column_name = column.key
-                    if column_name not in ['id', 'rule_id']:
-                        setattr(target_media_types, column_name, getattr(source_rule.media_types, column_name))
-
-                session.add(target_media_types)
-            else:
-                # 如果已有设置，更新现有设置
-                # 使用inspect自动复制所有字段（除了id和rule_id）
-                media_inspector = inspect(MediaTypes)
-                for column in media_inspector.columns:
-                    column_name = column.key
-                    if column_name not in ['id', 'rule_id']:
-                        setattr(target_media_types, column_name, getattr(source_rule.media_types, column_name))
-
-        # 复制规则同步表数据
-        # 检查源规则是否有同步关系
-        if hasattr(source_rule, 'rule_syncs') and source_rule.rule_syncs:
-            for sync in source_rule.rule_syncs:
-                # 检查是否已存在
-                exists = any(s.sync_rule_id == sync.sync_rule_id for s in target_rule.rule_syncs)
-                if not exists:
-                    # 确保不会创建自引用的同步关系
-                    if sync.sync_rule_id != target_rule.id:
-                        new_sync = RuleSync(
-                            rule_id=target_rule.id,
-                            sync_rule_id=sync.sync_rule_id
-                        )
-                        session.add(new_sync)
-                        rule_syncs_success += 1
-
-                        # 启用目标规则的同步功能
-                        if rule_syncs_success > 0:
-                            target_rule.enable_sync = True
-                else:
-                    rule_syncs_skip += 1
-
-        # 复制规则设置
-        # 保存目标规则的原始关联
-        original_source_chat_id = target_rule.source_chat_id
-        original_target_chat_id = target_rule.target_chat_id
         had_existing_sync = target_rule.enable_sync
-
-        # 获取ForwardRule模型的所有字段
-        inspector = inspect(ForwardRule)
-        sync_related_fields = {'enable_sync'}
-        for column in inspector.columns:
-            column_name = column.key
-            if column_name in ['id', 'source_chat_id', 'target_chat_id', 'source_chat', 'target_chat',
-                               'keywords', 'replace_rules', 'media_types']:
-                continue
-            if column_name in sync_related_fields:
-                continue
-
-            # 获取源规则的值并设置到目标规则
-            value = getattr(source_rule, column_name)
-            setattr(target_rule, column_name, value)
-
-        # 恢复目标规则的原始关联
-        target_rule.source_chat_id = original_source_chat_id
-        target_rule.target_chat_id = original_target_chat_id
-        target_rule.enable_sync = had_existing_sync or rule_syncs_success > 0
-
-        # 保存更改
+        counts = copy_rule_settings(session, source_rule, target_rule, had_existing_sync)
         session.commit()
 
         # 构建消息内容
         result_message = (
             f"✅ 已从规则 `{source_rule_id}` 复制到规则 `{target_rule.id}`\n\n"
-            f"普通关键字: 成功复制 {keywords_normal_success} 个, 跳过重复 {keywords_normal_skip} 个\n"
-            f"正则关键字: 成功复制 {keywords_regex_success} 个, 跳过重复 {keywords_regex_skip} 个\n"
-            f"替换规则: 成功复制 {replace_rules_success} 个, 跳过重复 {replace_rules_skip} 个\n"
-            f"媒体扩展名: 成功复制 {media_extensions_success} 个, 跳过重复 {media_extensions_skip} 个\n"
-            f"同步规则: 成功复制 {rule_syncs_success} 个, 跳过重复 {rule_syncs_skip} 个\n"
+            f"普通关键字: 成功复制 {counts['keywords_normal_success']} 个, 跳过重复 {counts['keywords_normal_skip']} 个\n"
+            f"正则关键字: 成功复制 {counts['keywords_regex_success']} 个, 跳过重复 {counts['keywords_regex_skip']} 个\n"
+            f"替换规则: 成功复制 {counts['replace_rules_success']} 个, 跳过重复 {counts['replace_rules_skip']} 个\n"
+            f"媒体扩展名: 成功复制 {counts['media_extensions_success']} 个, 跳过重复 {counts['media_extensions_skip']} 个\n"
+            f"同步规则: 成功复制 {counts['rule_syncs_success']} 个, 跳过重复 {counts['rule_syncs_skip']} 个\n"
             f"媒体类型设置和其他规则设置已复制\n"
         )
 

@@ -1,4 +1,4 @@
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from models.models import Keyword, ReplaceRule, ForwardRule, MediaTypes, MediaExtensions, RuleSync, get_db_session
 import logging
 from enums.enums import AddMode
@@ -6,12 +6,128 @@ from enums.enums import AddMode
 logger = logging.getLogger(__name__)
 
 
-class DBOperations:
-    @classmethod
-    async def create(cls):
-        """创建DBOperations实例"""
-        return cls()
+def copy_rule_settings(session, source_rule, target_rule, had_existing_sync):
+    counts = {
+        'keywords_normal_success': 0,
+        'keywords_normal_skip': 0,
+        'keywords_regex_success': 0,
+        'keywords_regex_skip': 0,
+        'replace_rules_success': 0,
+        'replace_rules_skip': 0,
+        'media_extensions_success': 0,
+        'media_extensions_skip': 0,
+        'rule_syncs_success': 0,
+        'rule_syncs_skip': 0,
+    }
 
+    for keyword in source_rule.keywords:
+        if not keyword.is_regex:
+            exists = any(
+                k.keyword == keyword.keyword
+                and not k.is_regex
+                and k.is_blacklist == keyword.is_blacklist
+                for k in target_rule.keywords
+            )
+            if exists:
+                counts['keywords_normal_skip'] += 1
+            else:
+                session.add(Keyword(
+                    rule_id=target_rule.id,
+                    keyword=keyword.keyword,
+                    is_regex=False,
+                    is_blacklist=keyword.is_blacklist,
+                ))
+                counts['keywords_normal_success'] += 1
+
+    for keyword in source_rule.keywords:
+        if keyword.is_regex:
+            exists = any(
+                k.keyword == keyword.keyword
+                and k.is_regex
+                and k.is_blacklist == keyword.is_blacklist
+                for k in target_rule.keywords
+            )
+            if exists:
+                counts['keywords_regex_skip'] += 1
+            else:
+                session.add(Keyword(
+                    rule_id=target_rule.id,
+                    keyword=keyword.keyword,
+                    is_regex=True,
+                    is_blacklist=keyword.is_blacklist,
+                ))
+                counts['keywords_regex_success'] += 1
+
+    for replace_rule in source_rule.replace_rules:
+        exists = any(
+            r.pattern == replace_rule.pattern and r.content == replace_rule.content
+            for r in target_rule.replace_rules
+        )
+        if exists:
+            counts['replace_rules_skip'] += 1
+        else:
+            session.add(ReplaceRule(
+                rule_id=target_rule.id,
+                pattern=replace_rule.pattern,
+                content=replace_rule.content,
+            ))
+            counts['replace_rules_success'] += 1
+
+    if hasattr(source_rule, 'media_extensions') and source_rule.media_extensions:
+        for extension in source_rule.media_extensions:
+            exists = any(
+                e.extension == extension.extension
+                for e in target_rule.media_extensions
+            )
+            if exists:
+                counts['media_extensions_skip'] += 1
+            else:
+                session.add(MediaExtensions(
+                    rule_id=target_rule.id,
+                    extension=extension.extension,
+                ))
+                counts['media_extensions_success'] += 1
+
+    if hasattr(source_rule, 'media_types') and source_rule.media_types:
+        target_media_types = session.query(MediaTypes).filter_by(rule_id=target_rule.id).first()
+        if not target_media_types:
+            target_media_types = MediaTypes(rule_id=target_rule.id)
+            session.add(target_media_types)
+
+        for column in inspect(MediaTypes).columns:
+            if column.key not in ['id', 'rule_id']:
+                setattr(target_media_types, column.key, getattr(source_rule.media_types, column.key))
+
+    if hasattr(source_rule, 'rule_syncs') and source_rule.rule_syncs:
+        for sync in source_rule.rule_syncs:
+            exists = any(
+                s.sync_rule_id == sync.sync_rule_id
+                for s in target_rule.rule_syncs
+            )
+            if exists:
+                counts['rule_syncs_skip'] += 1
+            elif sync.sync_rule_id != target_rule.id:
+                session.add(RuleSync(
+                    rule_id=target_rule.id,
+                    sync_rule_id=sync.sync_rule_id,
+                ))
+                counts['rule_syncs_success'] += 1
+
+    for column in inspect(ForwardRule).columns:
+        if column.key in [
+            'id',
+            'source_chat_id',
+            'target_chat_id',
+            'enable_sync',
+        ]:
+            continue
+        setattr(target_rule, column.key, getattr(source_rule, column.key))
+
+    target_rule.enable_sync = had_existing_sync or counts['rule_syncs_success'] > 0
+    return counts
+
+
+class DBOperations:
     def _get_sync_rules(self, session, rule_id):
         return [sr.sync_rule_id for sr in session.query(RuleSync).filter(RuleSync.rule_id == rule_id).all()]
 

@@ -41,7 +41,7 @@ async def init_db_ops():
     """初始化 DBOperations 实例"""
     global db_ops
     if db_ops is None:
-        db_ops = await DBOperations.create()
+        db_ops = DBOperations()
     return db_ops
 
 
@@ -71,7 +71,7 @@ init_db()
 async def start_clients():
     # 初始化 DBOperations
     global db_ops, scheduler, chat_updater
-    db_ops = await DBOperations.create()
+    db_ops = DBOperations()
 
     try:
         # 启动用户客户端

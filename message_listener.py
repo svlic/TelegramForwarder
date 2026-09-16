@@ -55,6 +55,20 @@ async def handle_clear_all_confirmation(event, sender_id, state_chat_id):
     return True
 
 
+async def _handle_pending_state(event, bot_client):
+    sender_id, state_chat_id = get_state_identity(event)
+    current_state, message, _state_type = await state_manager.get_state(sender_id, state_chat_id)
+
+    if not current_state:
+        return False
+    if await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message):
+        return True
+    if current_state == 'clear_all_confirm':
+        await handle_clear_all_confirmation(event, sender_id, state_chat_id)
+        return True
+    return False
+
+
 async def setup_listeners(user_client, bot_client):
     """
     设置消息监听器
@@ -106,19 +120,8 @@ async def handle_user_message(event, bot_client):
     
     chat = await event.get_chat()
     chat_id = abs(chat.id)
-    sender_id, state_chat_id = get_state_identity(event)
-
-    # 检查用户状态
-    current_state, message, _state_type = await state_manager.get_state(sender_id, state_chat_id)
-
-    if current_state:
-        # 处理提示词设置
-        if await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message):
-            return
-
-        if current_state == 'clear_all_confirm':
-            await handle_clear_all_confirmation(event, sender_id, state_chat_id)
-            return
+    if await _handle_pending_state(event, bot_client):
+        return
 
     # 检查是否是媒体组消息
     if event.message.grouped_id:
@@ -178,23 +181,11 @@ async def handle_user_message(event, bot_client):
 async def handle_bot_message(event, bot_client):
     """处理机器人客户端收到的消息（命令）"""
     try:
-        sender_id, state_chat_id = get_state_identity(event)
-
-        # 检查用户状态
-        current_state, message, _state_type = await state_manager.get_state(sender_id, state_chat_id)
-
-        # 处理提示词设置
-        if current_state:
-            if await handle_prompt_setting(event, bot_client, sender_id, state_chat_id, current_state, message):
-                return
-
-            if current_state == 'clear_all_confirm':
-                await handle_clear_all_confirmation(event, sender_id, state_chat_id)
-                return
+        if await _handle_pending_state(event, bot_client):
+            return
 
         # 如果没有特殊状态，则处理常规命令
         await bot_handler.handle_command(bot_client, event)
     except Exception as e:
         logger.error(f'处理机器人命令时发生错误: {str(e)}')
         logger.exception(e)
-

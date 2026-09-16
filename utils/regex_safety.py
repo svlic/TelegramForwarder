@@ -9,7 +9,7 @@ from __future__ import annotations
 import multiprocessing as mp
 import re
 from dataclasses import dataclass
-from typing import Match, Optional, Pattern, Tuple
+from typing import Match, Optional, Tuple
 
 REGEX_TIMEOUT_SECONDS = 1.0
 MAX_REGEX_PATTERN_LENGTH = 500
@@ -181,8 +181,3 @@ def safe_re_finditer(
     text = _bounded_text(text)
     result = _run_with_timeout("finditer", pattern, text, flags=flags, timeout=timeout)
     return list(result or [])
-
-
-def safe_compile(pattern: str, flags: int = 0) -> Pattern[str]:
-    _validate_pattern(pattern)
-    return re.compile(pattern, flags)

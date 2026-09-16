@@ -1,4 +1,3 @@
-import importlib
 import os
 import sys
 import logging
@@ -126,17 +125,7 @@ def select_primary_media_group_message(messages, *, require_caption=False):
 
 async def get_main_module():
     """获取 main 模块"""
-    try:
-        return sys.modules['__main__']
-    except KeyError:
-        # 如果找不到 main 模块，尝试手动导入
-        spec = importlib.util.spec_from_file_location(
-            "main",
-            os.path.join(os.path.dirname(os.path.dirname(__file__)), "main.py")
-        )
-        main = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(main)
-        return main
+    return sys.modules['__main__']
 
 async def get_bot_client():
     """获取机器人客户端"""

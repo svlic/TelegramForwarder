@@ -12,7 +12,7 @@ from filters.base_filter import BaseFilter
 from filters.init_filter import InitFilter
 from filters.replace_filter import ReplaceFilter
 from handlers.command_handlers import perform_clear_all
-from models.db_operations import DBOperations
+from models.db_operations import DBOperations, copy_rule_settings
 from utils.common import check_keyword_match
 from utils.regex_safety import (
     MAX_REGEX_PATTERN_LENGTH,
@@ -211,6 +211,100 @@ class KeywordOpsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(deleted, 2)
         deleted_objs = [c.args[0] for c in session.delete.call_args_list]
         self.assertEqual(deleted_objs, [r2, r1])
+
+
+class CopyRuleSettingsTests(unittest.TestCase):
+    def test_copy_rule_settings_preserves_relations_and_reports_counts(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy.orm import sessionmaker
+        from models.models import (
+            Base,
+            Chat,
+            ForwardRule,
+            Keyword,
+            MediaExtensions,
+            MediaTypes,
+            ReplaceRule,
+            RuleSync,
+        )
+
+        engine = create_engine("sqlite:///:memory:")
+        Base.metadata.create_all(engine)
+        session = sessionmaker(bind=engine)()
+        chats = [Chat(telegram_chat_id=str(i), name=str(i)) for i in range(1, 5)]
+        session.add_all(chats)
+        session.flush()
+
+        source = ForwardRule(
+            source_chat_id=chats[0].id,
+            target_chat_id=chats[1].id,
+            enable_rule=False,
+        )
+        target = ForwardRule(
+            source_chat_id=chats[2].id,
+            target_chat_id=chats[3].id,
+            enable_rule=True,
+            enable_sync=False,
+        )
+        session.add_all([source, target])
+        session.flush()
+
+        source.keywords = [
+            Keyword(keyword="same", is_regex=False, is_blacklist=True),
+            Keyword(keyword="normal", is_regex=False, is_blacklist=False),
+            Keyword(keyword="regex", is_regex=True, is_blacklist=True),
+        ]
+        target.keywords = [Keyword(keyword="same", is_regex=False, is_blacklist=True)]
+        source.replace_rules = [
+            ReplaceRule(pattern="same", content="x"),
+            ReplaceRule(pattern="new", content="y"),
+        ]
+        target.replace_rules = [ReplaceRule(pattern="same", content="x")]
+        source.media_extensions = [
+            MediaExtensions(extension="jpg"),
+            MediaExtensions(extension="pdf"),
+        ]
+        target.media_extensions = [MediaExtensions(extension="jpg")]
+        source.media_types = MediaTypes(photo=True, video=True)
+        source.rule_syncs = [
+            RuleSync(sync_rule_id=88),
+            RuleSync(sync_rule_id=99),
+            RuleSync(sync_rule_id=target.id),
+        ]
+        target.rule_syncs = [RuleSync(sync_rule_id=88)]
+        session.commit()
+
+        source_chat_id = target.source_chat_id
+        target_chat_id = target.target_chat_id
+        counts = copy_rule_settings(session, source, target, had_existing_sync=False)
+        session.commit()
+
+        self.assertEqual(
+            counts,
+            {
+                'keywords_normal_success': 1,
+                'keywords_normal_skip': 1,
+                'keywords_regex_success': 1,
+                'keywords_regex_skip': 0,
+                'replace_rules_success': 1,
+                'replace_rules_skip': 1,
+                'media_extensions_success': 1,
+                'media_extensions_skip': 1,
+                'rule_syncs_success': 1,
+                'rule_syncs_skip': 1,
+            },
+        )
+        self.assertEqual(target.source_chat_id, source_chat_id)
+        self.assertEqual(target.target_chat_id, target_chat_id)
+        self.assertFalse(target.enable_rule)
+        self.assertTrue(target.enable_sync)
+        self.assertTrue(target.media_types.photo)
+        self.assertTrue(target.media_types.video)
+        self.assertEqual({item.keyword for item in target.keywords}, {"same", "normal", "regex"})
+        self.assertEqual({item.pattern for item in target.replace_rules}, {"same", "new"})
+        self.assertEqual({item.extension for item in target.media_extensions}, {"jpg", "pdf"})
+        self.assertEqual({item.sync_rule_id for item in target.rule_syncs}, {88, 99})
+        session.close()
 
 
 class InitFilterTests(unittest.IsolatedAsyncioTestCase):
