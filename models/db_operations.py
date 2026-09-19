@@ -1,5 +1,5 @@
 from sqlalchemy import inspect, text
-from models.models import Keyword, ReplaceRule, ForwardRule, MediaTypes, MediaExtensions, RuleSync, get_db_session
+from models.models import Keyword, ReplaceRule, ForwardRule, MediaTypes, MediaExtensions, RuleSync
 import logging
 from enums.enums import AddMode
 
