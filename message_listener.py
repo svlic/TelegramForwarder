@@ -1,4 +1,6 @@
 from telethon import events
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from models.models import get_db_session, Chat, ForwardRule
 import logging
 from handlers import bot_handler
@@ -138,10 +140,9 @@ async def handle_user_message(event, bot_client):
     
     # 首先检查数据库中是否有该聊天的转发规则
     with get_db_session() as session:
-        # 查询源聊天
-        source_chat = session.query(Chat).filter(
-            Chat.telegram_chat_id == get_telegram_chat_db_id(chat)
-        ).first()
+        source_chat = session.scalar(
+            select(Chat).where(Chat.telegram_chat_id == get_telegram_chat_db_id(chat))
+        )
         
         if not source_chat:
             return
@@ -149,10 +150,18 @@ async def handle_user_message(event, bot_client):
         # 添加日志：查询转发规则
         logger.info(f'找到源聊天: {source_chat.name} (ID: {source_chat.id})')
         
-        # 查找以当前聊天为源的规则
-        rules = session.query(ForwardRule).filter(
-            ForwardRule.source_chat_id == source_chat.id
-        ).all()
+        rules = list(session.scalars(
+            select(ForwardRule)
+            .where(ForwardRule.source_chat_id == source_chat.id)
+            .options(
+                selectinload(ForwardRule.source_chat),
+                selectinload(ForwardRule.target_chat),
+                selectinload(ForwardRule.keywords),
+                selectinload(ForwardRule.replace_rules),
+                selectinload(ForwardRule.media_types),
+                selectinload(ForwardRule.media_extensions),
+            )
+        ))
         
         if not rules:
             logger.info(f'聊天 {source_chat.name} 没有转发规则')
@@ -165,18 +174,15 @@ async def handle_user_message(event, bot_client):
             content_length = len(event.message.text or '')
             logger.info(f'收到新消息 来自聊天: {source_chat.name} ({chat_id}) 文本长度: {content_length}')
             
-        # 添加日志：处理规则
-        logger.info(f'找到 {len(rules)} 条转发规则')
-        
-        # 处理每条转发规则
-        for rule in rules:
-            target_chat = rule.target_chat
-            if not rule.enable_rule:
-                logger.info(f'规则 {rule.id} 未启用')
-                continue
-            logger.info(f'处理转发规则 ID: {rule.id} (从 {source_chat.name} 转发到: {target_chat.name})')
-            # 使用过滤器链处理并转发消息
-            await process_forward_rule(bot_client, event, str(chat_id), rule)
+    logger.info(f'找到 {len(rules)} 条转发规则')
+
+    for rule in rules:
+        target_chat = rule.target_chat
+        if not rule.enable_rule:
+            logger.info(f'规则 {rule.id} 未启用')
+            continue
+        logger.info(f'处理转发规则 ID: {rule.id} (从 {source_chat.name} 转发到: {target_chat.name})')
+        await process_forward_rule(bot_client, event, str(chat_id), rule)
 
 async def handle_bot_message(event, bot_client):
     """处理机器人客户端收到的消息（命令）"""

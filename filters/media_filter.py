@@ -2,9 +2,8 @@ import logging
 import os
 from utils.media import get_media_size
 from utils.constants import TEMP_DIR
-from utils.common import get_db_ops, collect_media_group_messages, select_primary_media_group_message
+from utils.common import collect_media_group_messages, select_primary_media_group_message
 from filters.base_filter import BaseFilter
-from models.models import MediaTypes, get_db_session
 from enums.enums import AddMode
 logger = logging.getLogger(__name__)
 
@@ -52,8 +51,7 @@ class MediaFilter(BaseFilter):
         # 获取媒体类型设置
         media_types = None
         if rule.enable_media_type_filter:
-            with get_db_session() as session:
-                media_types = session.query(MediaTypes).filter_by(rule_id=rule.id).first()
+            media_types = rule.media_types
 
         context.media_group_messages = []
         context.ai_media_messages = []
@@ -181,18 +179,17 @@ class MediaFilter(BaseFilter):
         if has_media:
             # 检查媒体类型是否被屏蔽
             if rule.enable_media_type_filter:
-                with get_db_session() as session:
-                    media_types = session.query(MediaTypes).filter_by(rule_id=rule.id).first()
-                    if media_types and await self._is_media_type_blocked(event.message.media, media_types):
-                        logger.info(f'媒体类型被屏蔽，跳过消息 ID={event.message.id}')
-                        context.blocked_media_message_ids.add(event.message.id)
-                        # 检查是否允许文本通过
-                        if rule.media_allow_text:
-                            logger.info('媒体被屏蔽但允许文本通过')
-                            context.media_blocked = True  # 标记媒体被屏蔽
-                        else:
-                            context.should_forward = False
-                        return True
+                media_types = rule.media_types
+                if media_types and await self._is_media_type_blocked(event.message.media, media_types):
+                    logger.info(f'媒体类型被屏蔽，跳过消息 ID={event.message.id}')
+                    context.blocked_media_message_ids.add(event.message.id)
+                    # 检查是否允许文本通过
+                    if rule.media_allow_text:
+                        logger.info('媒体被屏蔽但允许文本通过')
+                        context.media_blocked = True  # 标记媒体被屏蔽
+                    else:
+                        context.should_forward = False
+                    return True
 
             # 检查媒体扩展名
             if rule.enable_extension_filter and event.message.media:
@@ -334,35 +331,12 @@ class MediaFilter(BaseFilter):
             else:
                 logger.info(f"文件 {file_name} 的扩展名: {extension}")
 
-        # 获取规则中保存的扩展名列表
-        db_ops = await get_db_ops()
-        allowed = True
-        try:
-            with get_db_session() as session:
-                # 使用db_operations中的函数获取扩展名列表
-                extensions = await db_ops.get_media_extensions(session, rule.id)
-                extension_list = [ext["extension"].lower() for ext in extensions]
+        extension_list = [item.extension.lower() for item in rule.media_extensions]
+        if rule.extension_filter_mode == AddMode.BLACKLIST:
+            allowed = extension not in extension_list
+            logger.info(f"扩展名 {extension} {'不在' if allowed else '在'}黑名单中，{'允许' if allowed else '不允许'}")
+            return allowed
 
-                # 判断是否允许该扩展名
-                if rule.extension_filter_mode == AddMode.BLACKLIST:
-                    # 黑名单模式：如果扩展名在列表中，则不允许
-                    if extension in extension_list:
-                        logger.info(f"扩展名 {extension} 在黑名单中，不允许")
-                        allowed = False
-                    else:
-                        logger.info(f"扩展名 {extension} 不在黑名单中，允许")
-                        allowed = True
-                else:
-                    # 白名单模式：如果扩展名不在列表中，则不允许
-                    if extension in extension_list:
-                        logger.info(f"扩展名 {extension} 在白名单中，允许")
-                        allowed = True
-                    else:
-                        logger.info(f"扩展名 {extension} 不在白名单中，不允许")
-                        allowed = False
-        except Exception as e:
-            logger.error(f"检查媒体扩展名时出错: {str(e)}")
-            allowed = False  # 出错时默认拒绝，保障安全
-
+        allowed = extension in extension_list
+        logger.info(f"扩展名 {extension} {'在' if allowed else '不在'}白名单中，{'允许' if allowed else '不允许'}")
         return allowed
-
