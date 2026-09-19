@@ -1,11 +1,12 @@
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, ForeignKey, Enum, UniqueConstraint, inspect, text
-from sqlalchemy.orm import relationship, sessionmaker, declarative_base
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 from enums.enums import ForwardMode, PreviewMode, MessageMode, AddMode, HandleMode
 from utils.constants import DATABASE_URL, DEFAULT_MAX_MEDIA_SIZE, DEFAULT_SUMMARY_TIME
 import logging
 import os
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 class Chat(Base):
     __tablename__ = 'chats'
@@ -163,7 +164,7 @@ def migrate_db(engine):
     keyword_columns = {column['name'] for column in inspector.get_columns('keywords')}
     
     try:
-        with engine.connect() as connection:
+        with engine.begin() as connection:
 
             # 如果rule_syncs表不存在，创建表
             if 'rule_syncs' not in existing_tables:
@@ -261,7 +262,7 @@ def migrate_db(engine):
     }
 
     # 添加缺失的列
-    with engine.connect() as connection:
+    with engine.begin() as connection:
         # 添加forward_rules表的列
         for column, sql in forward_rules_new_columns.items():
             if column not in forward_rules_columns:
@@ -290,12 +291,11 @@ def migrate_db(engine):
         # 修改keywords表的唯一约束
         try:
             with engine.connect() as connection:
-                # 检查索引是否存在
-                result = connection.execute(text("""
-                    SELECT name FROM sqlite_master 
-                    WHERE type='index' AND name='unique_rule_keyword_is_regex_is_blacklist'
-                """))
-                index_exists = result.fetchone() is not None
+                expected_columns = {'rule_id', 'keyword', 'is_regex', 'is_blacklist'}
+                index_exists = any(
+                    set(constraint.get('column_names') or ()) == expected_columns
+                    for constraint in inspect(engine).get_unique_constraints('keywords')
+                )
                 if not index_exists:
                     logging.info('开始更新 keywords 表的唯一约束...')
                     try:
@@ -348,15 +348,48 @@ def migrate_db(engine):
 
 def init_db():
     os.makedirs('./db', exist_ok=True)
-    engine = create_engine(DATABASE_URL)
+    engine = _get_engine()
+    from alembic import command
+    from alembic.config import Config
 
-    # 首先创建所有表
-    Base.metadata.create_all(engine)
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'alembic.ini')
+    config = Config(config_path)
+    config.set_main_option('sqlalchemy.url', DATABASE_URL.replace('%', '%%'))
 
-    # 然后进行必要的迁移
-    migrate_db(engine)
-
+    existing_tables = set(inspect(engine).get_table_names())
+    application_tables = set(Base.metadata.tables)
+    if application_tables.intersection(existing_tables) and 'alembic_version' not in existing_tables:
+        # Upgrade databases created by releases predating Alembic, then record the baseline.
+        migrate_db(engine)
+        _validate_current_schema(engine)
+        with engine.begin() as connection:
+            config.attributes['connection'] = connection
+            command.stamp(config, 'head')
+    else:
+        with engine.begin() as connection:
+            config.attributes['connection'] = connection
+            command.upgrade(config, 'head')
     return engine
+
+
+def _validate_current_schema(engine):
+    inspector = inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+    missing_tables = set(Base.metadata.tables) - existing_tables
+    missing_columns = {}
+    for table_name, table in Base.metadata.tables.items():
+        if table_name not in existing_tables:
+            continue
+        actual_columns = {column['name'] for column in inspector.get_columns(table_name)}
+        missing = set(table.columns.keys()) - actual_columns
+        if missing:
+            missing_columns[table_name] = sorted(missing)
+
+    if missing_tables or missing_columns:
+        raise RuntimeError(
+            '旧数据库迁移后结构仍不完整，未写入 Alembic 基线: '
+            f'missing_tables={sorted(missing_tables)}, missing_columns={missing_columns}'
+        )
 
 _ENGINE = None
 _SESSION_FACTORY = None
@@ -370,11 +403,19 @@ def _get_engine():
 def _get_session_factory():
     global _SESSION_FACTORY
     if _SESSION_FACTORY is None:
-        _SESSION_FACTORY = sessionmaker(bind=_get_engine())
+        _SESSION_FACTORY = sessionmaker(bind=_get_engine(), expire_on_commit=False)
     return _SESSION_FACTORY
 
 def get_session():
     return _get_session_factory()()
+
+
+def dispose_db():
+    global _ENGINE, _SESSION_FACTORY
+    if _ENGINE is not None:
+        _ENGINE.dispose()
+    _ENGINE = None
+    _SESSION_FACTORY = None
 
 from contextlib import contextmanager
 
