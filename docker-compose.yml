@@ -1,6 +1,6 @@
 services:
   telegram-forwarder:
-    image: heavrnl/telegramforwarder:latest
+    image: heavrnl/telegramforwarder:${TELEGRAM_FORWARDER_VERSION:-1.7.2}
     container_name: telegram-forwarder
     restart: unless-stopped
     volumes:
@@ -18,4 +18,3 @@ services:
         compress: "true"
     stdin_open: true
     tty: true
-
