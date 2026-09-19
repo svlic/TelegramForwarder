@@ -1,65 +1,37 @@
 import asyncio
-from datetime import datetime, timedelta
-import pytz
 import logging
 from telethon import TelegramClient
 from models.models import get_db_session, Chat
 import traceback
-from utils.constants import DEFAULT_TIMEZONE, CHAT_UPDATE_TIME
+from utils.constants import CHAT_UPDATE_INTERVAL_SECONDS
 logger = logging.getLogger(__name__)
 
 class ChatUpdater:
     def __init__(self, user_client: TelegramClient):
         self.user_client = user_client
-        self.timezone = pytz.timezone(DEFAULT_TIMEZONE)
         self.task = None
-        # 从环境变量获取更新时间，默认凌晨3点
-        self.update_time = CHAT_UPDATE_TIME
+        self.update_interval_seconds = CHAT_UPDATE_INTERVAL_SECONDS
     
     async def start(self):
         """启动定时更新任务"""
         logger.info("开始启动聊天信息更新器...")
         try:
-            # 计算下一次执行时间
-            now = datetime.now(self.timezone)
-            next_time = self._get_next_run_time(now, self.update_time)
-            wait_seconds = (next_time - now).total_seconds()
-            
-            logger.info(f"下一次聊天信息更新时间: {next_time.strftime('%Y-%m-%d %H:%M:%S')}")
-            logger.info(f"等待时间: {wait_seconds:.2f} 秒")
-            
             # 创建定时任务
             self.task = asyncio.create_task(self._run_update_task())
-            logger.info("聊天信息更新器启动完成")
+            logger.info("聊天信息更新器启动完成，每20分钟检查一次")
         except Exception as e:
             logger.error(f"启动聊天信息更新器时出错: {str(e)}")
             logger.error(f"错误详情: {traceback.format_exc()}")
-    
-    def _get_next_run_time(self, now, target_time):
-        """计算下一次运行时间"""
-        hour, minute = map(int, target_time.split(':'))
-        next_time = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-        
-        if next_time <= now:
-            next_time += timedelta(days=1)
-            
-        return next_time
-    
+
     async def _run_update_task(self):
         """运行更新任务"""
         while True:
             try:
-                # 计算下一次执行时间
-                now = datetime.now(self.timezone)
-                target_time = self._get_next_run_time(now, self.update_time)
-                
-                # 等待到执行时间
-                wait_seconds = (target_time - now).total_seconds()
-                await asyncio.sleep(wait_seconds)
-                
+                await asyncio.sleep(self.update_interval_seconds)
+
                 # 执行更新任务
                 await self._update_all_chats()
-                
+
             except asyncio.CancelledError:
                 logger.info("聊天信息更新任务已取消")
                 break
@@ -140,4 +112,4 @@ class ChatUpdater:
         """停止定时任务"""
         if self.task:
             self.task.cancel()
-            logger.info("聊天信息更新任务已停止") 
+            logger.info("聊天信息更新任务已停止")

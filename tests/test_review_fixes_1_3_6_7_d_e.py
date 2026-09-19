@@ -117,6 +117,12 @@ class RegexSafetyTests(unittest.IsolatedAsyncioTestCase):
         keyword = SimpleNamespace(keyword=r"abc", is_regex=True, is_blacklist=False)
         self.assertTrue(await check_keyword_match(keyword, "xxabcyy"))
 
+    async def test_normal_keyword_match_is_case_sensitive(self):
+        keyword = SimpleNamespace(keyword="Alert", is_regex=False, is_blacklist=True)
+
+        self.assertTrue(await check_keyword_match(keyword, "Security Alert"))
+        self.assertFalse(await check_keyword_match(keyword, "security alert"))
+
     async def test_check_keyword_match_timeout_whitelist_rejects(self):
         keyword = SimpleNamespace(keyword=r"(a+)+$", is_regex=True, is_blacklist=False)
         with patch(

@@ -648,7 +648,7 @@ async def check_keyword_match(keyword, message_text):
             logger.error("正则表达式错误: %s", keyword.keyword)
             return bool(keyword.is_blacklist)
     else:
-        if keyword.keyword.lower() in message_text.lower():
+        if keyword.keyword in message_text:
             logger.info("关键字匹配成功")
             return True
     return False

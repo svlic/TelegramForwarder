@@ -52,6 +52,7 @@ class ForwardRule(Base):
     media_allow_text = Column(Boolean, default=False)  # 是否放行文本
     media_caption_filter = Column(Boolean, default=False)  # 是否仅转发带caption的媒体
     # AI相关字段
+    is_ai = Column(Boolean, default=False)  # 是否启用AI处理
     ai_model = Column(String, nullable=True)  # 使用的AI模型
     ai_prompt = Column(String, nullable=True)  # AI处理的prompt
     enable_ai_upload_image = Column(Boolean, default=False)  # 是否启用AI图片上传功能
