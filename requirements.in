@@ -1,0 +1,14 @@
+# Core
+Telethon==1.45.0
+cryptg==0.6.0
+pyaes==1.6.1
+
+# Database
+SQLAlchemy==2.0.54
+alembic==1.20.0
+
+# AI Provider
+openai==3.16.2
+
+# Config
+python-dotenv==1.2.3
