@@ -44,72 +44,63 @@ class ChatUpdater:
         """更新所有聊天信息"""
         logger.info("开始更新所有聊天信息...")
         with get_db_session() as session:
-            # 获取所有聊天
-            chats = session.query(Chat).all()
+            chats = [
+                (chat.id, chat.telegram_chat_id, chat.name)
+                for chat in session.query(Chat).all()
+            ]
             total_chats = len(chats)
             logger.info(f"找到 {total_chats} 个聊天需要更新信息")
-            
-            updated_count = 0
-            skipped_count = 0
-            error_count = 0
-            
-            # 处理每个聊天
-            for i, chat in enumerate(chats, 1):
+
+        updated_count = 0
+        skipped_count = 0
+        error_count = 0
+
+        for i, (chat_row_id, chat_id, old_chat_name) in enumerate(chats, 1):
+            try:
+                if i % 10 == 0 or i == total_chats:
+                    logger.info(f"进度: {i}/{total_chats} ({i/total_chats*100:.1f}%)")
+
                 try:
-                    # 每10个聊天报告一次进度
-                    if i % 10 == 0 or i == total_chats:
-                        logger.info(f"进度: {i}/{total_chats} ({i/total_chats*100:.1f}%)")
-                    
-                    chat_id = chat.telegram_chat_id
-                    # 尝试获取聊天实体
-                    try:
-                        # 尝试转换聊天ID为整数
-                        try:
-                            chat_id_int = int(chat_id)
-                        except ValueError:
-                            logger.warning(f"聊天ID '{chat_id}' 不是有效的数字格式")
+                    chat_id_int = int(chat_id)
+                except ValueError:
+                    logger.warning(f"聊天ID '{chat_id}' 不是有效的数字格式")
+                    skipped_count += 1
+                    continue
+
+                entity = await self.user_client.get_entity(chat_id_int)
+                new_name = entity.title if hasattr(entity, 'title') else (
+                    f"{entity.first_name} {entity.last_name}" if hasattr(entity, 'last_name') and entity.last_name
+                    else entity.first_name if hasattr(entity, 'first_name')
+                    else "私聊"
+                )
+
+                if old_chat_name != new_name:
+                    with get_db_session() as session:
+                        chat = session.get(Chat, chat_row_id)
+                        if chat is None:
                             skipped_count += 1
                             continue
-                            
-                        entity = await self.user_client.get_entity(chat_id_int)
-                        # 更新聊天名称
-                        new_name = entity.title if hasattr(entity, 'title') else (
-                            f"{entity.first_name} {entity.last_name}" if hasattr(entity, 'last_name') and entity.last_name 
-                            else entity.first_name if hasattr(entity, 'first_name') 
-                            else "私聊"
-                        )
-                        
-                        # 只有当名称有变化时才更新
-                        if chat.name != new_name:
-                            old_name = chat.name or "未命名"
-                            chat.name = new_name
-                            session.commit()
-                            logger.info(f"已更新聊天 {chat_id}: {old_name} -> {new_name}")
-                            updated_count += 1
-                        else:
-                            skipped_count += 1
-                            
-                    except ValueError as e:
-                        logger.warning(f"无法获取聊天 {chat_id} 的信息: 无效的ID格式 - {str(e)}")
-                        skipped_count += 1
-                        continue
-                    except Exception as e:
-                        logger.warning(f"无法获取聊天 {chat_id} 的信息: {str(e)}")
-                        skipped_count += 1
-                        continue
-                        
-                except Exception as e:
-                    logger.error(f"处理聊天 {chat.telegram_chat_id} 时出错: {str(e)}")
-                    error_count += 1
-                    continue
-                    
-                # 每个聊天处理后暂停一会，避免请求过于频繁
-                await asyncio.sleep(1)
-                
-            logger.info(f"聊天信息更新完成。总计: {total_chats}, 更新: {updated_count}, 跳过: {skipped_count}, 错误: {error_count}")
-    
-    def stop(self):
+                        chat.name = new_name
+                        session.commit()
+                    logger.info(f"已更新聊天 {chat_id}: {old_chat_name or '未命名'} -> {new_name}")
+                    updated_count += 1
+                else:
+                    skipped_count += 1
+            except ValueError as e:
+                logger.warning(f"无法获取聊天 {chat_id} 的信息: 无效的ID格式 - {str(e)}")
+                skipped_count += 1
+            except Exception as e:
+                logger.warning(f"无法获取聊天 {chat_id} 的信息: {str(e)}")
+                error_count += 1
+
+            await asyncio.sleep(1)
+
+        logger.info(f"聊天信息更新完成。总计: {total_chats}, 更新: {updated_count}, 跳过: {skipped_count}, 错误: {error_count}")
+
+    async def stop(self):
         """停止定时任务"""
         if self.task:
             self.task.cancel()
+            await asyncio.gather(self.task, return_exceptions=True)
+            self.task = None
             logger.info("聊天信息更新任务已停止")

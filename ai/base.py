@@ -28,3 +28,8 @@ class BaseAIProvider(ABC):
     async def initialize(self, **kwargs) -> None:
         """初始化AI提供者"""
         ...
+
+    @abstractmethod
+    async def close(self) -> None:
+        """Release provider-owned network resources."""
+        ...

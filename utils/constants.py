@@ -1,4 +1,8 @@
 import os
+from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from sqlalchemy.engine import make_url
 
 ######### Telegram 配置 #########
 API_ID = os.getenv('API_ID')
@@ -29,8 +33,8 @@ CUSTOM_AI_API_KEY = os.getenv('CUSTOM_AI_API_KEY', '')
 CUSTOM_AI_API_BASE = os.getenv('CUSTOM_AI_API_BASE', '')
 
 ######### 可选配置 #########
-DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///./db/forward.db')
-DEFAULT_TIMEZONE = os.getenv('DEFAULT_TIMEZONE', 'Asia/Shanghai')
+DATABASE_URL = os.getenv('DATABASE_URL') or 'sqlite:///./db/forward.db'
+DEFAULT_TIMEZONE = os.getenv('DEFAULT_TIMEZONE') or 'Asia/Shanghai'
 
 ######### 运行时默认值 (无需在 .env 中配置) #########
 
@@ -67,3 +71,54 @@ MEDIA_SIZE_ROWS = 3
 MEDIA_SIZE_COLS = 4
 MEDIA_EXTENSIONS_ROWS = 3
 MEDIA_EXTENSIONS_COLS = 4
+
+
+def validate_config():
+    """Validate environment-backed settings before creating external clients."""
+    missing = [
+        name
+        for name, value in {
+            'API_ID': API_ID,
+            'API_HASH': API_HASH,
+            'PHONE_NUMBER': PHONE_NUMBER,
+            'BOT_TOKEN': BOT_TOKEN,
+            'USER_ID': os.getenv('USER_ID'),
+        }.items()
+        if not value
+    ]
+    if missing:
+        raise ValueError(f"缺少必填环境变量: {', '.join(missing)}")
+
+    try:
+        api_id = int(API_ID)
+    except (TypeError, ValueError) as exc:
+        raise ValueError('API_ID 必须是整数') from exc
+
+    try:
+        ZoneInfo(DEFAULT_TIMEZONE)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError(f'DEFAULT_TIMEZONE 不是有效的 IANA 时区: {DEFAULT_TIMEZONE}') from exc
+
+    try:
+        int(os.environ['USER_ID'])
+        for admin in os.getenv('ADMINS', '').split(','):
+            if admin.strip():
+                int(admin.strip())
+    except ValueError as exc:
+        raise ValueError('USER_ID 和 ADMINS 必须是整数 ID') from exc
+
+    try:
+        make_url(DATABASE_URL)
+    except Exception as exc:
+        raise ValueError('DATABASE_URL 格式无效') from exc
+
+    ai_key = os.getenv('CUSTOM_AI_API_KEY', '').strip()
+    ai_base = os.getenv('CUSTOM_AI_API_BASE', '').strip()
+    if ai_key or ai_base or AI_MODELS:
+        if not ai_key or not ai_base:
+            raise ValueError('启用 AI 时必须同时设置 CUSTOM_AI_API_KEY 和 CUSTOM_AI_API_BASE')
+        parsed_base = urlparse(ai_base)
+        if parsed_base.scheme not in {'http', 'https'} or not parsed_base.netloc:
+            raise ValueError('CUSTOM_AI_API_BASE 必须是有效的 HTTP(S) URL')
+
+    return api_id

@@ -341,7 +341,6 @@ class DeleteRuleCascadeTests(unittest.IsolatedAsyncioTestCase):
     async def test_handle_delete_rule_cleans_children_then_deletes(self):
         from handlers.command_handlers import handle_delete_rule_command
         from models.models import (
-            ForwardRule,
             Keyword,
             ReplaceRule,
             MediaExtensions,
@@ -488,10 +487,10 @@ class SummarySessionReleaseTests(unittest.IsolatedAsyncioTestCase):
             date=MagicMock(),
         )
         # timezone-aware-ish: astimezone returns datetime-like in range
-        import pytz
         from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
 
-        tz = pytz.timezone("Asia/Shanghai")
+        tz = ZoneInfo("Asia/Shanghai")
         now = datetime.now(tz)
         msg.date = now - timedelta(hours=1)
         msg.date = msg.date  # already aware

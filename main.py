@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # load_dotenv before utils.constants so env-backed values are populated at import
 load_dotenv()
 
-from models.models import init_db
+from models.models import dispose_db, init_db
 from message_listener import setup_listeners
 import os
 import asyncio
@@ -17,15 +17,15 @@ from models.db_operations import DBOperations
 from scheduler.summary_scheduler import SummaryScheduler
 from scheduler.chat_updater import ChatUpdater
 from handlers.bot_handler import send_welcome_message
+from ai import get_ai_provider
 from utils.log_config import setup_logging
-from utils.constants import TEMP_DIR, API_ID, API_HASH, BOT_TOKEN, PHONE_NUMBER
+from utils.constants import TEMP_DIR, API_HASH, BOT_TOKEN, PHONE_NUMBER, validate_config
 
 # 设置日志配置
 setup_logging()
 
 logger = logging.getLogger(__name__)
 
-api_id = API_ID
 api_hash = API_HASH
 bot_token = BOT_TOKEN
 phone_number = PHONE_NUMBER
@@ -35,6 +35,8 @@ db_ops = None
 
 scheduler = None
 chat_updater = None
+user_client = None
+bot_client = None
 
 
 async def init_db_ops():
@@ -60,20 +62,16 @@ for f in glob.glob(os.path.join(TEMP_DIR, '*')):
         logger.warning(f'清理临时文件失败: {f}, 错误: {e}')
 
 
-# 创建客户端
-user_client = TelegramClient('./sessions/user', api_id, api_hash)
-bot_client = TelegramClient('./sessions/bot', api_id, api_hash)
-
-# 初始化数据库
-init_db()
-
-
 async def start_clients():
     # 初始化 DBOperations
-    global db_ops, scheduler, chat_updater
-    db_ops = DBOperations()
+    global db_ops, scheduler, chat_updater, user_client, bot_client
+    api_id = validate_config()
+    user_client = TelegramClient('./sessions/user', api_id, api_hash)
+    bot_client = TelegramClient('./sessions/bot', api_id, api_hash)
 
     try:
+        init_db()
+        db_ops = DBOperations()
         # 启动用户客户端
         await user_client.start(phone=phone_number)
         me_user = await user_client.get_me()
@@ -107,15 +105,23 @@ async def start_clients():
             bot_client.run_until_disconnected()
         )
     finally:
+        # 停止调度器
+        if scheduler:
+            await scheduler.stop()
+        # 停止聊天信息更新器
+        if chat_updater:
+            await chat_updater.stop()
+        # 先停止新事件进入，再释放事件处理器共享的资源
+        for client in (bot_client, user_client):
+            if client and client.is_connected():
+                await client.disconnect()
+        # 关闭 AI HTTP 客户端
+        provider = await get_ai_provider()
+        await provider.close()
         # 关闭 DBOperations
         if db_ops and hasattr(db_ops, 'close'):
             await db_ops.close()
-        # 停止调度器
-        if scheduler:
-            scheduler.stop()
-        # 停止聊天信息更新器
-        if chat_updater:
-            chat_updater.stop()
+        dispose_db()
 
 
 async def register_bot_commands(bot):
@@ -271,11 +277,7 @@ async def register_bot_commands(bot):
 
 
 if __name__ == '__main__':
-    # 运行事件循环
-    loop = asyncio.get_event_loop()
     try:
-        loop.run_until_complete(start_clients())
+        asyncio.run(start_clients())
     except KeyboardInterrupt:
         logger.info("正在关闭客户端...")
-    finally:
-        loop.close()

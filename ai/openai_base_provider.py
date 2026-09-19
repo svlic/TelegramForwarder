@@ -1,6 +1,7 @@
 from typing import Optional, List, Dict
 from openai import AsyncOpenAI
 from .base import BaseAIProvider
+import asyncio
 import os
 import logging
 
@@ -13,33 +14,35 @@ class CustomOpenAIProvider(BaseAIProvider):
         super().__init__()
         self.env_prefix = env_prefix
         self.client = None
-        self.model = None
+        self._initialize_lock = asyncio.Lock()
 
     async def initialize(self, **kwargs) -> None:
-        try:
-            api_key = os.getenv(f'{self.env_prefix}_API_KEY')
-            if not api_key:
-                raise ValueError(f"未设置 {self.env_prefix}_API_KEY 环境变量")
+        if self.client is not None:
+            return
 
-            api_base = os.getenv(f'{self.env_prefix}_API_BASE', '').strip()
-            if not api_base:
-                raise ValueError(f"未设置 {self.env_prefix}_API_BASE 环境变量，必须指定兼容 OpenAI 的 API 地址")
+        async with self._initialize_lock:
+            if self.client is not None:
+                return
+            try:
+                api_key = os.getenv(f'{self.env_prefix}_API_KEY')
+                if not api_key:
+                    raise ValueError(f"未设置 {self.env_prefix}_API_KEY 环境变量")
 
-            self.client = AsyncOpenAI(
-                api_key=api_key,
-                base_url=api_base
-            )
+                api_base = os.getenv(f'{self.env_prefix}_API_BASE', '').strip()
+                if not api_base:
+                    raise ValueError(f"未设置 {self.env_prefix}_API_BASE 环境变量，必须指定兼容 OpenAI 的 API 地址")
 
-            self.model = kwargs.get('model')
-            if not self.model:
-                raise ValueError("未指定 AI 模型，请在规则中配置 ai_model 字段")
+                self.client = AsyncOpenAI(
+                    api_key=api_key,
+                    base_url=api_base,
+                )
 
-            logger.info(f"初始化 CustomOpenAI 模型: {self.model}, API: {api_base}")
+                logger.info(f"初始化 CustomOpenAI 客户端: API: {api_base}")
 
-        except Exception as e:
-            error_msg = f"初始化 {self.env_prefix} 客户端时出错: {str(e)}"
-            logger.error(error_msg, exc_info=True)
-            raise
+            except Exception as e:
+                error_msg = f"初始化 {self.env_prefix} 客户端时出错: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                raise
 
     async def process_message(self,
                             message: str,
@@ -49,6 +52,10 @@ class CustomOpenAIProvider(BaseAIProvider):
         try:
             if not self.client:
                 await self.initialize(**kwargs)
+
+            model = kwargs.get('model')
+            if not model:
+                raise ValueError("未指定 AI 模型，请在规则中配置 ai_model 字段")
 
             messages = []
             if prompt:
@@ -74,10 +81,10 @@ class CustomOpenAIProvider(BaseAIProvider):
             else:
                 messages.append({"role": "user", "content": message})
 
-            logger.info(f"实际使用的模型: {self.model}")
+            logger.info(f"实际使用的模型: {model}")
 
             completion = await self.client.chat.completions.create(
-                model=self.model,
+                model=model,
                 messages=messages,
                 stream=True
             )
@@ -106,3 +113,8 @@ class CustomOpenAIProvider(BaseAIProvider):
         except Exception as e:
             logger.error(f"{self.env_prefix} API 调用失败: {str(e)}", exc_info=True)
             raise
+
+    async def close(self) -> None:
+        if self.client is not None:
+            await self.client.close()
+            self.client = None

@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-import pytz
+from zoneinfo import ZoneInfo
 import traceback
 from models.models import get_db_session, ForwardRule
 import logging
@@ -20,7 +20,7 @@ MAX_SEND_ATTEMPTS = 2
 class SummaryScheduler:
     def __init__(self, user_client: TelegramClient, bot_client: TelegramClient):
         self.tasks = {}  # 存储所有定时任务 {rule_id: task}
-        self.timezone = pytz.timezone(DEFAULT_TIMEZONE)
+        self.timezone = ZoneInfo(DEFAULT_TIMEZONE)
         self.user_client = user_client
         self.bot_client = bot_client
         # 添加信号量来限制并发请求
@@ -334,8 +334,11 @@ class SummaryScheduler:
 
             logger.info("调度器启动完成")
 
-    def stop(self):
+    async def stop(self):
         """停止所有任务"""
-        for task in self.tasks.values():
+        tasks = list(self.tasks.values())
+        for task in tasks:
             task.cancel()
         self.tasks.clear()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
