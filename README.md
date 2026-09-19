@@ -103,6 +103,9 @@ USER_ID=
 
 可选项：
 ```ini
+# Docker 镜像版本，建议固定正式版本
+TELEGRAM_FORWARDER_VERSION=1.7.2
+
 # 管理员列表，留空默认 USER_ID，多个用逗号分隔
 ADMINS=
 
@@ -134,10 +137,37 @@ docker compose up -d
 
 ### 4️⃣ 更新
 
-使用 docker compose 运行时不需要拉取仓库源码，除非你打算自己 build。直接在项目目录执行：
+项目默认固定正式镜像版本，避免 `latest` 在无人值守重启时产生不可预期变更。升级前先备份 `db` 和 `sessions` 目录，然后把 `.env` 中的 `TELEGRAM_FORWARDER_VERSION` 改为目标正式版本，再执行：
 ```bash
 docker compose pull
 docker compose up -d
+```
+
+启动时会自动执行 Alembic 数据库迁移。首次升级到采用 Alembic 的版本时，程序会先兼容旧数据库结构，再记录迁移基线；迁移失败时不会写入基线版本。
+
+### 本地开发
+
+项目支持 Python 3.11 和 3.14，生产镜像使用 Python 3.14。运行依赖和开发依赖均带哈希锁定：
+
+```bash
+python -m pip install --require-hashes -r requirements.txt
+python -m pip install --require-hashes -r requirements-dev.txt
+python -m pytest -q
+python -m ruff check .
+```
+
+更新依赖锁文件：
+
+```bash
+pip-compile --generate-hashes -o requirements.txt requirements.in
+pip-compile --generate-hashes --allow-unsafe --strip-extras -o requirements-dev.txt requirements-dev.in
+```
+
+创建数据库迁移后可用以下命令检查或执行：
+
+```bash
+alembic current
+alembic upgrade head
 ```
 
 ## 📚 使用指南
